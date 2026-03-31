@@ -66,6 +66,11 @@ export interface CollectionPath {
   path: string;
 }
 
+export interface ChoicePayload {
+  message: string;
+  options: string[];
+}
+
 export type ContentType = "Game" | "Magazine" | "Book" | "Soundtrack" | "Video" | "Catalog";
 export type SortField = "title" | "year" | "developer" | "publisher" | "genre" | "platform";
 export type SortDir = "asc" | "desc";

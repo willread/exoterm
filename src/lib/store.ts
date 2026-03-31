@@ -1,7 +1,7 @@
 import { createSignal, createResource } from "solid-js";
 import { createStore } from "solid-js/store";
 import { searchGames, getGame, getFilterOptions, listCollections } from "./commands";
-import type { ContentType, SortDir, SortField, Theme, GameSummary } from "./types";
+import type { ChoicePayload, ContentType, SortDir, SortField, Theme, GameSummary } from "./types";
 
 // ── App state ──────────────────────────────────
 export const [theme, setTheme] = createSignal<Theme>("blue");
@@ -11,6 +11,9 @@ export const [activePanel, setActivePanel] = createSignal<"sidebar" | "list" | "
 // ── Dialog state ───────────────────────────────
 export const [activeDialog, setActiveDialog] = createSignal<string | null>(null);
 export const [activeMenu, setActiveMenu] = createSignal<string | null>(null);
+
+// ── Game console / CHOICE dialog ───────────────
+export const [gameChoice, setGameChoice] = createSignal<ChoicePayload | null>(null);
 
 // ── Search & filter state ──────────────────────
 export const [searchQuery, setSearchQuery] = createSignal("");

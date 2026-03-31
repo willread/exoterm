@@ -28,13 +28,14 @@ pub fn run() {
             commands::collections::validate_collection_path,
             commands::launch::launch_game,
             commands::launch::kill_game,
+            commands::launch::send_game_input,
             commands::config::get_config,
             commands::config::set_config,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {
-                let state = window.state::<AppState>();
-                commands::launch::kill_current_game(&state);
+                let app_state = window.state::<AppState>();
+                commands::launch::kill_current_game(&app_state);
             }
         })
         .run(tauri::generate_context!())
@@ -60,7 +61,8 @@ fn initialize_state() -> Result<AppState, String> {
     Ok(AppState {
         db: Mutex::new(conn),
         config: Mutex::new(config),
-        current_game: Mutex::new(None),
+        game_pid: Mutex::new(None),
+        game_stdin: Mutex::new(None),
     })
 }
 

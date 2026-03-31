@@ -64,6 +64,10 @@ export async function killGame(): Promise<void> {
   return invoke("kill_game");
 }
 
+export async function sendGameInput(input: string): Promise<void> {
+  return invoke("send_game_input", { input });
+}
+
 export async function getConfig(): Promise<AppConfig> {
   return invoke("get_config");
 }
