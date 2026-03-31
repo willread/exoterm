@@ -165,6 +165,7 @@ body {
   flex-shrink: 0;
   border-right: 1px solid var(--border-color);
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .sidebar__section {
@@ -343,10 +344,25 @@ body {
 }
 
 .game-list__col--title { flex: 3; min-width: 20ch; }
-.game-list__col--year { width: 8ch; text-align: right; flex-shrink: 0; }
+/* Year header stays left-aligned so adding/removing the sort arrow doesn't
+   shift the "Year" text.  Data rows are right-aligned for numeric readability. */
+.game-list__col--year { width: 8ch; flex-shrink: 0; }
+.game-list__row .game-list__col--year { text-align: right; }
 .game-list__col--developer { flex: 2; min-width: 12ch; }
 .game-list__col--genre { flex: 2; min-width: 12ch; }
 .game-list__col--fav { width: 3ch; text-align: center; flex-shrink: 0; color: var(--fg-favorite); }
+
+/* ── Virtual scroll containers ───────────────── */
+.game-list__virtual-spacer {
+  position: relative;
+}
+
+.game-list__virtual-window {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
 
 .game-list__empty {
   padding: 2ch;

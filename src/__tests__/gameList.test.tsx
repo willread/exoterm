@@ -260,15 +260,55 @@ describe("GameList sort indicators", () => {
     expect(filters.sortBy).toBe("developer");
     expect(filters.sortDir).toBe("asc");
   });
+
+  it("clicking a sort header resets offset to 0", async () => {
+    setFilters("offset", 100);
+    dispose = render(() => <GameList />, document.body);
+    await Promise.resolve();
+
+    const headerCols = document.querySelectorAll(".game-list__header-col");
+    const yearHeader = Array.from(headerCols).find((c) =>
+      c.textContent?.startsWith("Year")
+    ) as HTMLElement;
+    yearHeader.click();
+
+    expect(filters.offset).toBe(0);
+  });
+
+  it("clicking a sort header triggers a new search_games call with updated sort params", async () => {
+    setFilters("sortBy", "title");
+    setFilters("sortDir", "asc");
+    dispose = render(() => <GameList />, document.body);
+    // Let the initial mount effect settle.
+    await Promise.resolve();
+    await Promise.resolve();
+    mockInvoke.mockClear();
+
+    const headerCols = document.querySelectorAll(".game-list__header-col");
+    const yearHeader = Array.from(headerCols).find((c) =>
+      c.textContent?.startsWith("Year")
+    ) as HTMLElement;
+    yearHeader.click();
+
+    // Let the reactive effect and async fetch settle.
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const call = mockInvoke.mock.calls.find(([cmd]) => cmd === "search_games");
+    expect(call).toBeDefined();
+    expect((call![1] as any).sort_by).toBe("year");
+    expect((call![1] as any).sort_dir).toBe("asc");
+  });
 });
 
-describe("GameList no cap on visible games", () => {
+describe("GameList virtual scrolling", () => {
   it("default limit is large enough to show all games without pagination", () => {
     // Ensure no artificial 200-game cap; limit should be >= 10000
     expect(filters.limit).toBeGreaterThanOrEqual(10000);
   });
 
-  it("renders all games when more than 200 are in the list", async () => {
+  it("renders only a virtual window of rows, not all games at once", async () => {
+    // 250 games — virtual scrolling should render far fewer DOM rows.
     const games = Array.from({ length: 250 }, (_, i) =>
       makeGame({ id: i + 1, title: `Game ${i + 1}` })
     );
@@ -282,7 +322,36 @@ describe("GameList no cap on visible games", () => {
     await Promise.resolve();
     await Promise.resolve();
     const rows = document.querySelectorAll(".game-list__row");
-    expect(rows).toHaveLength(250);
+    // Virtual scrolling renders a viewport-sized window (< 250), not all rows.
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.length).toBeLessThan(250);
+  });
+
+  it("renders first games starting from index 0 at initial scroll position", async () => {
+    const games = Array.from({ length: 100 }, (_, i) =>
+      makeGame({ id: i + 1, title: `Game ${String(i + 1).padStart(3, "0")}` })
+    );
+    setGameList(games);
+    setTotalCount(100);
+    dispose = render(() => <GameList />, document.body);
+    await Promise.resolve();
+    const rows = document.querySelectorAll(".game-list__row");
+    // First rendered row corresponds to the first game.
+    expect(rows[0].querySelector(".game-list__col--title")?.textContent).toBe("Game 001");
+  });
+
+  it("uses a total-height spacer so the scrollbar reflects all games", async () => {
+    const games = Array.from({ length: 500 }, (_, i) =>
+      makeGame({ id: i + 1, title: `Game ${i + 1}` })
+    );
+    setGameList(games);
+    setTotalCount(500);
+    dispose = render(() => <GameList />, document.body);
+    await Promise.resolve();
+    const spacer = document.querySelector(".game-list__virtual-spacer") as HTMLElement;
+    expect(spacer).not.toBeNull();
+    // Spacer height = 500 rows × 16px
+    expect(spacer.style.height).toBe("8000px");
   });
 });
 

@@ -1,4 +1,4 @@
-import { Component, For, Show, createEffect } from "solid-js";
+import { Component, For, Show, createEffect, createMemo, createSignal } from "solid-js";
 import {
   gameList,
   selectedIndex,
@@ -12,11 +12,36 @@ import {
 } from "../lib/store";
 import { toggleFavorite } from "../lib/commands";
 
+// Row height must match --char-h CSS variable (16px).
+const ROW_HEIGHT = 16;
+// Extra rows to render above and below the visible viewport.
+const OVERSCAN = 20;
+
 export const GameList: Component = () => {
   let listRef: HTMLDivElement | undefined;
 
+  const [scrollTop, setScrollTop] = createSignal(0);
+
+  // Derived virtual window — only re-compute when scroll or list length changes.
+  const startIdx = createMemo(() =>
+    Math.max(0, Math.floor(scrollTop() / ROW_HEIGHT) - OVERSCAN)
+  );
+  const endIdx = createMemo(() => {
+    // In JSDOM (tests) clientHeight is 0; fall back to window.innerHeight.
+    const containerH =
+      listRef && listRef.clientHeight > 0
+        ? listRef.clientHeight
+        : window.innerHeight || 600;
+    return Math.min(
+      gameList().length,
+      Math.ceil((scrollTop() + containerH) / ROW_HEIGHT) + OVERSCAN
+    );
+  });
+  const visibleGames = createMemo(() =>
+    gameList().slice(startIdx(), endIdx())
+  );
+
   // Fetch whenever search query or any filter changes.
-  // Plain createEffect tracks all reactive reads inside it automatically.
   createEffect(() => {
     const _q = searchQuery();
     const _ct = filters.contentType;
@@ -33,7 +58,7 @@ export const GameList: Component = () => {
     fetchGames();
   });
 
-  // Update selected game id when index changes
+  // Update selected game id when index changes.
   createEffect(() => {
     const games = gameList();
     const idx = selectedIndex();
@@ -44,16 +69,19 @@ export const GameList: Component = () => {
     }
   });
 
-  // Auto-scroll to keep selected row visible
+  // Auto-scroll to keep selected row visible; also sync scrollTop signal so
+  // the virtual window stays correct after keyboard navigation.
   createEffect(() => {
     const idx = selectedIndex();
     if (listRef) {
-      const rowHeight = 16;
-      const rowTop = idx * rowHeight;
+      const rowTop = idx * ROW_HEIGHT;
       if (rowTop < listRef.scrollTop) {
         listRef.scrollTop = rowTop;
-      } else if (rowTop + rowHeight > listRef.scrollTop + listRef.clientHeight) {
-        listRef.scrollTop = rowTop + rowHeight - listRef.clientHeight;
+        setScrollTop(rowTop);
+      } else if (rowTop + ROW_HEIGHT > listRef.scrollTop + listRef.clientHeight) {
+        const newTop = rowTop + ROW_HEIGHT - listRef.clientHeight;
+        listRef.scrollTop = newTop;
+        setScrollTop(newTop);
       }
     }
   });
@@ -65,6 +93,9 @@ export const GameList: Component = () => {
       setFilters("sortBy", col as any);
       setFilters("sortDir", "asc");
     }
+    // Always reset to the top of the list when sort changes.
+    setFilters("offset", 0);
+    setSelectedIndex(0);
   };
 
   const sortIndicator = (col: string) => {
@@ -112,7 +143,12 @@ export const GameList: Component = () => {
         </div>
       </div>
 
-      <div class="game-list__body" ref={listRef} tabindex="-1">
+      <div
+        class="game-list__body"
+        ref={listRef}
+        tabindex="-1"
+        onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
+      >
         <Show
           when={gameList().length > 0}
           fallback={
@@ -123,37 +159,52 @@ export const GameList: Component = () => {
             </div>
           }
         >
-          <For each={gameList()}>
-            {(game, index) => (
-              <div
-                class={`game-list__row ${index() === selectedIndex() ? "game-list__row--selected" : ""}`}
-                onClick={() => {
-                  setSelectedIndex(index());
-                  setSelectedGameId(game.id);
+          {/* Outer spacer gives the scrollbar the correct total height */}
+          <div
+            class="game-list__virtual-spacer"
+            style={{ height: `${gameList().length * ROW_HEIGHT}px` }}
+          >
+            {/* Inner container is shifted to the visible window position */}
+            <div
+              class="game-list__virtual-window"
+              style={{ transform: `translateY(${startIdx() * ROW_HEIGHT}px)` }}
+            >
+              <For each={visibleGames()}>
+                {(game, relIdx) => {
+                  const absIdx = () => startIdx() + relIdx();
+                  return (
+                    <div
+                      class={`game-list__row ${absIdx() === selectedIndex() ? "game-list__row--selected" : ""}`}
+                      onClick={() => {
+                        setSelectedIndex(absIdx());
+                        setSelectedGameId(game.id);
+                      }}
+                      onDblClick={() => {
+                        import("../lib/commands").then((c) => c.launchGame(game.id));
+                      }}
+                    >
+                      <div
+                        class="game-list__col game-list__col--fav"
+                        onClick={(e) => handleFavorite(game.id, e)}
+                      >
+                        {game.favorite ? "\u2605" : ""}
+                      </div>
+                      <div class="game-list__col game-list__col--title">{game.title}</div>
+                      <div class="game-list__col game-list__col--year">
+                        {game.release_year ?? ""}
+                      </div>
+                      <div class="game-list__col game-list__col--developer">
+                        {game.developer ?? ""}
+                      </div>
+                      <div class="game-list__col game-list__col--genre">
+                        {game.genre ?? ""}
+                      </div>
+                    </div>
+                  );
                 }}
-                onDblClick={() => {
-                  import("../lib/commands").then((c) => c.launchGame(game.id));
-                }}
-              >
-                <div
-                  class="game-list__col game-list__col--fav"
-                  onClick={(e) => handleFavorite(game.id, e)}
-                >
-                  {game.favorite ? "\u2605" : ""}
-                </div>
-                <div class="game-list__col game-list__col--title">{game.title}</div>
-                <div class="game-list__col game-list__col--year">
-                  {game.release_year ?? ""}
-                </div>
-                <div class="game-list__col game-list__col--developer">
-                  {game.developer ?? ""}
-                </div>
-                <div class="game-list__col game-list__col--genre">
-                  {game.genre ?? ""}
-                </div>
-              </div>
-            )}
-          </For>
+              </For>
+            </div>
+          </div>
         </Show>
       </div>
 

@@ -60,7 +60,13 @@ export const [filterOptions, { refetch: refetchFilterOptions }] = createResource
 );
 
 // ── Fetch games ────────────────────────────────
+// Monotonically increasing counter — every fetchGames call increments it.
+// After the await, we check that our seq is still the latest; if not, a newer
+// call has already taken ownership of the result and we discard ours.
+let _fetchSeq = 0;
+
 export async function fetchGames() {
+  const seq = ++_fetchSeq;
   try {
     const result = await searchGames({
       query: searchQuery() || undefined,
@@ -77,6 +83,7 @@ export async function fetchGames() {
       offset: filters.offset,
       limit: filters.limit,
     });
+    if (seq !== _fetchSeq) return; // stale — a newer request is already in flight
     setGameList(result.games);
     setTotalCount(result.total_count);
   } catch (e) {

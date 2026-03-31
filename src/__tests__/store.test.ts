@@ -209,4 +209,37 @@ describe("fetchGames", () => {
     // Stale state is preserved — user sees last good result
     expect(gameList()).toHaveLength(1);
   });
+
+  it("discards results from an earlier request when a newer one completes first", async () => {
+    // Simulate a slow first call that completes after a fast second call.
+    let resolveFirst!: (v: unknown) => void;
+    let callCount = 0;
+
+    mockInvoke.mockImplementation(async (cmd) => {
+      if (cmd === "search_games") {
+        callCount++;
+        if (callCount === 1) {
+          // First call blocks until we manually resolve it.
+          await new Promise((resolve) => { resolveFirst = resolve; });
+          return { games: [makeGame({ id: 999, title: "Stale" })], total_count: 1 };
+        }
+        // Second call returns immediately.
+        return { games: [makeGame({ id: 1, title: "Fresh" })], total_count: 1 };
+      }
+      return null;
+    });
+
+    // Start the slow first call (do not await yet).
+    const p1 = fetchGames();
+    // Start and await the fast second call.
+    await fetchGames();
+
+    // Now unblock the first (stale) call.
+    resolveFirst(undefined);
+    await p1;
+
+    // The stale result must have been discarded; only "Fresh" should be visible.
+    expect(gameList()).toHaveLength(1);
+    expect(gameList()[0].title).toBe("Fresh");
+  });
 });
