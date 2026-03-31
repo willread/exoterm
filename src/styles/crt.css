@@ -53,17 +53,15 @@
   mix-blend-mode: multiply;
 }
 
-/* Heavy vignette — dark edges like a real CRT bezel */
+/* Gentle vignette — slight darkening at edges */
 [data-crt="true"] .crt-overlay::after {
   content: '';
   position: absolute;
   inset: 0;
   background: radial-gradient(
     ellipse at center,
-    transparent 40%,
-    rgba(0, 0, 0, 0.25) 65%,
-    rgba(0, 0, 0, 0.65) 85%,
-    rgba(0, 0, 0, 0.9) 100%
+    transparent 60%,
+    rgba(0, 0, 0, 0.2) 100%
   );
 }
 
@@ -93,10 +91,10 @@
   inset: -2px;
   pointer-events: none;
   z-index: 10000;
-  /* Thick rounded bezel shadow */
+  /* Soft rounded bezel shadow */
   box-shadow:
-    inset 0 0 80px rgba(0, 0, 0, 0.5),
-    inset 0 0 20px rgba(0, 0, 0, 0.3);
+    inset 0 0 60px rgba(0, 0, 0, 0.3),
+    inset 0 0 15px rgba(0, 0, 0, 0.2);
   border-radius: 14px;
 }
 
@@ -112,17 +110,6 @@
   90%  { opacity: 0.94; }
   95%  { opacity: 0.98; }
   100% { opacity: 0.96; }
-}
-
-/* ── Occasional screen jitter ── */
-@keyframes crt-jitter {
-  0%, 97%, 100% { transform: translateX(0); }
-  98% { transform: translateX(-1px); }
-  99% { transform: translateX(1px); }
-}
-
-[data-crt="true"] #root {
-  animation: crt-jitter 4s infinite;
 }
 
 /* ── Phosphor persistence / afterglow for moving content ── */
@@ -158,5 +145,5 @@
 }
 
 [data-crt="true"] #root {
-  animation: crt-turnon 0.6s ease-out, crt-jitter 4s 0.6s infinite;
+  animation: crt-turnon 0.6s ease-out;
 }
