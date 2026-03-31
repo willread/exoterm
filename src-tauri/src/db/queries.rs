@@ -123,15 +123,17 @@ pub fn search_games(
         ""
     };
 
-    // Validate sort column
+    // Validate sort column.
+    // Use COALESCE for title so that rows with a NULL title_normalized (old data)
+    // fall back to lower(title) and still sort correctly.
     let sort_col = match sort_by {
-        "title" => "g.title_normalized",
+        "title" => "COALESCE(g.title_normalized, lower(g.title))",
         "year" => "g.release_year",
         "developer" => "g.developer",
         "publisher" => "g.publisher",
         "genre" => "g.genre",
         "platform" => "g.platform",
-        _ => "g.title_normalized",
+        _ => "COALESCE(g.title_normalized, lower(g.title))",
     };
 
     let dir = if sort_dir == "desc" { "DESC" } else { "ASC" };

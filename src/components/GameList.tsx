@@ -1,4 +1,4 @@
-import { Component, For, Show, createEffect, createMemo, createSignal } from "solid-js";
+import { Component, For, Show, batch, createEffect, createMemo, createSignal } from "solid-js";
 import {
   gameList,
   selectedIndex,
@@ -87,15 +87,20 @@ export const GameList: Component = () => {
   });
 
   const handleSort = (col: string) => {
-    if (filters.sortBy === col) {
-      setFilters("sortDir", filters.sortDir === "asc" ? "desc" : "asc");
-    } else {
-      setFilters("sortBy", col as any);
-      setFilters("sortDir", "asc");
-    }
-    // Always reset to the top of the list when sort changes.
-    setFilters("offset", 0);
-    setSelectedIndex(0);
+    // batch() ensures all store mutations happen atomically — the reactive
+    // effect fires exactly ONCE with all updated values, so only one fetch
+    // is dispatched per click.
+    batch(() => {
+      if (filters.sortBy === col) {
+        setFilters("sortDir", filters.sortDir === "asc" ? "desc" : "asc");
+      } else {
+        setFilters("sortBy", col as any);
+        setFilters("sortDir", "asc");
+      }
+      // Always reset to the top of the list when sort changes.
+      setFilters("offset", 0);
+      setSelectedIndex(0);
+    });
   };
 
   const sortIndicator = (col: string) => {
