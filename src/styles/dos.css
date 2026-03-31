@@ -169,8 +169,6 @@ body {
 
 .sidebar__section {
   padding: 0 1ch;
-  max-height: 40vh;
-  overflow-y: auto;
 }
 
 .sidebar__section-header {
@@ -217,16 +215,21 @@ body {
 .sidebar__reset-btn {
   padding: 2px 1ch;
   cursor: pointer;
-  text-align: center;
+  text-align: left;
   color: var(--fg-title);
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   user-select: none;
 }
 
-.sidebar__reset-btn:hover {
+.sidebar__reset-btn:hover:not(.sidebar__reset-btn--disabled) {
   background: var(--bg-highlight);
   color: var(--fg-highlight);
+}
+
+.sidebar__reset-btn--disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 /* Keep .sidebar__title for backward compatibility (not currently used in new design) */
@@ -340,7 +343,7 @@ body {
 }
 
 .game-list__col--title { flex: 3; min-width: 20ch; }
-.game-list__col--year { width: 6ch; text-align: right; flex-shrink: 0; }
+.game-list__col--year { width: 8ch; text-align: right; flex-shrink: 0; }
 .game-list__col--developer { flex: 2; min-width: 12ch; }
 .game-list__col--genre { flex: 2; min-width: 12ch; }
 .game-list__col--fav { width: 3ch; text-align: center; flex-shrink: 0; color: var(--fg-favorite); }

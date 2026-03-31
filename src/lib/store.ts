@@ -33,7 +33,7 @@ export const [filters, setFilters] = createStore({
   sortBy: "title" as SortField,
   sortDir: "asc" as SortDir,
   offset: 0,
-  limit: 200,
+  limit: 50000,
 });
 
 // ── Loading state ──────────────────────────────

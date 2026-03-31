@@ -136,12 +136,16 @@ pub fn launch_game(
     *state.game_pid.lock().map_err(|e| e.to_string())? = Some(pid);
     *state.game_stdin.lock().map_err(|e| e.to_string())? = Some(stdin);
 
-    // Wait for child in background so it doesn't become a zombie
-    thread::spawn(move || {
-        let _ = child.wait();
-    });
+    // Wait for child in background; emit game-exited only when the process truly exits
+    {
+        let app_handle = app.clone();
+        thread::spawn(move || {
+            let _ = child.wait();
+            app_handle.emit("game-exited", ()).ok();
+        });
+    }
 
-    // Spawn stdout reader thread
+    // Spawn stdout reader thread — detects CHOICE protocol only
     {
         let app_handle = app.clone();
         thread::spawn(move || {
@@ -149,7 +153,7 @@ pub fn launch_game(
         });
     }
 
-    // Merge stderr into the same stream
+    // Merge stderr into the same CHOICE detection stream
     {
         let app_handle = app.clone();
         thread::spawn(move || {
@@ -162,6 +166,7 @@ pub fn launch_game(
 }
 
 /// Read from a process output stream and detect our CHOICE shim protocol.
+/// Does NOT emit game-exited — that is handled by the child.wait() thread.
 fn read_output_stream<R: Read + Send + 'static>(stream: R, app: AppHandle) {
     let mut buf = [0u8; 256];
     let mut accumulated = String::new();
@@ -186,8 +191,6 @@ fn read_output_stream<R: Read + Send + 'static>(stream: R, app: AppHandle) {
             Err(_) => break,
         }
     }
-
-    app.emit("game-exited", ()).ok();
 }
 
 /// Detect our choice.bat protocol: ##CHOICE##message##options##

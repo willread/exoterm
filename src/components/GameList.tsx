@@ -1,4 +1,4 @@
-import { Component, For, Show, createEffect, batch } from "solid-js";
+import { Component, For, Show, createEffect } from "solid-js";
 import {
   gameList,
   selectedIndex,
@@ -59,14 +59,12 @@ export const GameList: Component = () => {
   });
 
   const handleSort = (col: string) => {
-    batch(() => {
-      if (filters.sortBy === col) {
-        setFilters("sortDir", filters.sortDir === "asc" ? "desc" : "asc");
-      } else {
-        setFilters("sortBy", col as any);
-        setFilters("sortDir", "asc");
-      }
-    });
+    if (filters.sortBy === col) {
+      setFilters("sortDir", filters.sortDir === "asc" ? "desc" : "asc");
+    } else {
+      setFilters("sortBy", col as any);
+      setFilters("sortDir", "asc");
+    }
   };
 
   const sortIndicator = (col: string) => {

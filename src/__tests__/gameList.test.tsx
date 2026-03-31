@@ -262,6 +262,30 @@ describe("GameList sort indicators", () => {
   });
 });
 
+describe("GameList no cap on visible games", () => {
+  it("default limit is large enough to show all games without pagination", () => {
+    // Ensure no artificial 200-game cap; limit should be >= 10000
+    expect(filters.limit).toBeGreaterThanOrEqual(10000);
+  });
+
+  it("renders all games when more than 200 are in the list", async () => {
+    const games = Array.from({ length: 250 }, (_, i) =>
+      makeGame({ id: i + 1, title: `Game ${i + 1}` })
+    );
+    mockInvoke.mockImplementation(async (cmd) => {
+      if (cmd === "search_games") return { games, total_count: 250 };
+      return null;
+    });
+    setGameList(games);
+    setTotalCount(250);
+    dispose = render(() => <GameList />, document.body);
+    await Promise.resolve();
+    await Promise.resolve();
+    const rows = document.querySelectorAll(".game-list__row");
+    expect(rows).toHaveLength(250);
+  });
+});
+
 describe("GameList count footer", () => {
   it("shows position and total when there are games", async () => {
     const games = [makeGame({ id: 1 }), makeGame({ id: 2 })];
