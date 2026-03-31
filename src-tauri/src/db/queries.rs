@@ -6,12 +6,12 @@ pub fn search_games(
     conn: &Connection,
     query: &str,
     content_type: &str,
-    genre: Option<&str>,
-    developer: Option<&str>,
-    publisher: Option<&str>,
-    year: Option<i32>,
-    series: Option<&str>,
-    platform: Option<&str>,
+    genres: &[String],
+    developers: &[String],
+    publishers: &[String],
+    years: &[i32],
+    series: &[String],
+    platforms: &[String],
     favorites_only: bool,
     sort_by: &str,
     sort_dir: &str,
@@ -34,34 +34,77 @@ pub fn search_games(
         params_vec.push(Box::new(content_type.to_string()));
     }
 
-    if let Some(g) = genre {
-        where_clauses.push("g.genre LIKE ?".to_string());
-        params_vec.push(Box::new(format!("%{}%", g)));
+    if !genres.is_empty() {
+        let clauses: Vec<String> = genres.iter().map(|_| "g.genre LIKE ?".to_string()).collect();
+        where_clauses.push(format!("({})", clauses.join(" OR ")));
+        for g in genres {
+            params_vec.push(Box::new(format!("%{}%", g)));
+        }
     }
 
-    if let Some(d) = developer {
-        where_clauses.push("g.developer = ?".to_string());
-        params_vec.push(Box::new(d.to_string()));
+    if !developers.is_empty() {
+        if developers.len() == 1 {
+            where_clauses.push("g.developer = ?".to_string());
+            params_vec.push(Box::new(developers[0].clone()));
+        } else {
+            let placeholders = developers.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
+            where_clauses.push(format!("g.developer IN ({})", placeholders));
+            for d in developers {
+                params_vec.push(Box::new(d.clone()));
+            }
+        }
     }
 
-    if let Some(p) = publisher {
-        where_clauses.push("g.publisher = ?".to_string());
-        params_vec.push(Box::new(p.to_string()));
+    if !publishers.is_empty() {
+        if publishers.len() == 1 {
+            where_clauses.push("g.publisher = ?".to_string());
+            params_vec.push(Box::new(publishers[0].clone()));
+        } else {
+            let placeholders = publishers.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
+            where_clauses.push(format!("g.publisher IN ({})", placeholders));
+            for p in publishers {
+                params_vec.push(Box::new(p.clone()));
+            }
+        }
     }
 
-    if let Some(y) = year {
-        where_clauses.push("g.release_year = ?".to_string());
-        params_vec.push(Box::new(y));
+    if !years.is_empty() {
+        if years.len() == 1 {
+            where_clauses.push("g.release_year = ?".to_string());
+            params_vec.push(Box::new(years[0]));
+        } else {
+            let placeholders = years.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
+            where_clauses.push(format!("g.release_year IN ({})", placeholders));
+            for y in years {
+                params_vec.push(Box::new(*y));
+            }
+        }
     }
 
-    if let Some(s) = series {
-        where_clauses.push("g.series = ?".to_string());
-        params_vec.push(Box::new(s.to_string()));
+    if !series.is_empty() {
+        if series.len() == 1 {
+            where_clauses.push("g.series = ?".to_string());
+            params_vec.push(Box::new(series[0].clone()));
+        } else {
+            let placeholders = series.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
+            where_clauses.push(format!("g.series IN ({})", placeholders));
+            for s in series {
+                params_vec.push(Box::new(s.clone()));
+            }
+        }
     }
 
-    if let Some(p) = platform {
-        where_clauses.push("g.platform = ?".to_string());
-        params_vec.push(Box::new(p.to_string()));
+    if !platforms.is_empty() {
+        if platforms.len() == 1 {
+            where_clauses.push("g.platform = ?".to_string());
+            params_vec.push(Box::new(platforms[0].clone()));
+        } else {
+            let placeholders = platforms.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
+            where_clauses.push(format!("g.platform IN ({})", placeholders));
+            for p in platforms {
+                params_vec.push(Box::new(p.clone()));
+            }
+        }
     }
 
     if favorites_only {
@@ -223,12 +266,12 @@ fn get_distinct_values(
 ) -> rusqlite::Result<Vec<String>> {
     let sql = if where_clause.is_empty() {
         format!(
-            "SELECT DISTINCT {} FROM games WHERE {} IS NOT NULL AND {} != '' ORDER BY {} LIMIT 500",
+            "SELECT DISTINCT {} FROM games WHERE {} IS NOT NULL AND {} != '' ORDER BY {}",
             column, column, column, column
         )
     } else {
         format!(
-            "SELECT DISTINCT {} FROM games {} AND {} IS NOT NULL AND {} != '' ORDER BY {} LIMIT 500",
+            "SELECT DISTINCT {} FROM games {} AND {} IS NOT NULL AND {} != '' ORDER BY {}",
             column, where_clause, column, column, column
         )
     };

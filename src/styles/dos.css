@@ -161,10 +161,9 @@ body {
 
 /* ── Sidebar / Filters ────────────────────────── */
 .sidebar {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+  width: 26ch;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border-color);
   overflow-y: auto;
 }
 
@@ -174,6 +173,63 @@ body {
   overflow-y: auto;
 }
 
+.sidebar__section-header {
+  color: var(--fg-title);
+  padding: 2px 1ch;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+}
+
+.sidebar__section-header:hover {
+  background: var(--bg-highlight);
+  color: var(--fg-highlight);
+}
+
+.sidebar__section-arrow {
+  font-size: 0.7em;
+}
+
+.sidebar__group-header {
+  padding: 0 1ch;
+  cursor: pointer;
+  color: var(--fg-secondary);
+  height: var(--char-h);
+  line-height: var(--char-h);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+}
+
+.sidebar__group-header:hover {
+  color: var(--fg-primary);
+}
+
+.sidebar__item--indent {
+  padding-left: 3ch;
+}
+
+.sidebar__reset-btn {
+  padding: 2px 1ch;
+  cursor: pointer;
+  text-align: center;
+  color: var(--fg-title);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  user-select: none;
+}
+
+.sidebar__reset-btn:hover {
+  background: var(--bg-highlight);
+  color: var(--fg-highlight);
+}
+
+/* Keep .sidebar__title for backward compatibility (not currently used in new design) */
 .sidebar__title {
   color: var(--fg-title);
   padding: 2px 1ch;
@@ -221,30 +277,6 @@ body {
   color: var(--fg-highlight);
 }
 
-/* ── Content Type Tabs ────────────────────────── */
-.content-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
-}
-
-.content-tabs__tab {
-  padding: 0 1ch;
-  cursor: pointer;
-  color: var(--fg-secondary);
-  height: var(--char-h);
-  line-height: var(--char-h);
-}
-
-.content-tabs__tab:hover {
-  color: var(--fg-primary);
-}
-
-.content-tabs__tab--active {
-  background: var(--bg-primary);
-  color: var(--fg-title);
-}
 
 /* ── Game List ────────────────────────────────── */
 .game-list {
@@ -363,6 +395,7 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
+  border-left: 1px solid var(--border-color);
   overflow: hidden;
   padding: 0;
 }
@@ -399,7 +432,8 @@ body {
   color: var(--fg-secondary);
   word-wrap: break-word;
   white-space: pre-wrap;
-  max-height: 20ch;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   border-top: 1px solid var(--border-color);
   font-size: var(--font-size);
