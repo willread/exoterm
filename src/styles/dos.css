@@ -162,6 +162,7 @@ body {
 /* ── Sidebar / Filters ────────────────────────── */
 .sidebar {
   width: 100%;
+  box-sizing: border-box;
   flex-shrink: 0;
   border-right: 1px solid var(--border-color);
   overflow-y: auto;
@@ -416,6 +417,17 @@ body {
   font-family: var(--font-dos);
   font-size: var(--font-size);
   caret-color: var(--fg-primary);
+}
+
+.search-bar__clear {
+  padding: 0 1ch;
+  cursor: pointer;
+  color: var(--fg-secondary);
+  user-select: none;
+}
+
+.search-bar__clear:hover {
+  color: var(--fg-highlight);
 }
 
 /* ── Detail Panel ─────────────────────────────── */

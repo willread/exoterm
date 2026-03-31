@@ -57,15 +57,22 @@ describe("StatusBar", () => {
     );
   });
 
-  it("renders all hotkey hints", () => {
+  it("renders hotkey hints", () => {
     dispose = render(() => <StatusBar />, document.body);
     const bar = document.querySelector(".status-bar") as HTMLElement;
     const text = bar.textContent ?? "";
     expect(text).toContain("Enter");
     expect(text).toContain("Launch");
     expect(text).toContain("Search");
-    expect(text).toContain("Tab");
     expect(text).toContain("Fav");
-    expect(text).toContain("Back");
+  });
+
+  it("does not render removed hotkey hints (F1, Tab, Esc)", () => {
+    dispose = render(() => <StatusBar />, document.body);
+    const bar = document.querySelector(".status-bar") as HTMLElement;
+    const text = bar.textContent ?? "";
+    expect(text).not.toContain("F1");
+    expect(text).not.toContain("Tab");
+    expect(text).not.toContain("Esc");
   });
 });
