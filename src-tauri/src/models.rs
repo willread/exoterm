@@ -87,6 +87,12 @@ pub struct CollectionPath {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GameImage {
+    pub category: String,
+    pub data_url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScanProgress {
     pub current: usize,
     pub total_files: usize,

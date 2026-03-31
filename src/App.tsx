@@ -15,6 +15,8 @@ import {
   setActiveDialog,
   setActiveMenu,
   activeMenu,
+  activePanel,
+  setActivePanel,
   gameList,
   selectedIndex,
   setSelectedIndex,
@@ -183,6 +185,44 @@ const App: Component = () => {
       alt: true,
       context: "global",
       handler: () => setActiveMenu(activeMenu() === "help" ? null : "help"),
+    });
+
+    // Tab cycles: sidebar -> list -> detail -> sidebar
+    const PANELS = ["sidebar", "list", "detail"] as const;
+    registerKey({
+      key: "Tab",
+      context: "global",
+      handler: () => {
+        const idx = PANELS.indexOf(activePanel());
+        const next = PANELS[(idx + 1) % PANELS.length];
+        setActivePanel(next);
+        // Move focus to the appropriate element
+        if (next === "list") {
+          document.querySelector<HTMLElement>(".game-list__body")?.focus();
+        } else if (next === "sidebar") {
+          document.querySelector<HTMLElement>(".sidebar")?.focus();
+        } else if (next === "detail") {
+          document.querySelector<HTMLElement>(".detail-panel")?.focus();
+        }
+      },
+    });
+
+    registerKey({
+      key: "Tab",
+      shift: true,
+      context: "global",
+      handler: () => {
+        const idx = PANELS.indexOf(activePanel());
+        const prev = PANELS[(idx + PANELS.length - 1) % PANELS.length];
+        setActivePanel(prev);
+        if (prev === "list") {
+          document.querySelector<HTMLElement>(".game-list__body")?.focus();
+        } else if (prev === "sidebar") {
+          document.querySelector<HTMLElement>(".sidebar")?.focus();
+        } else if (prev === "detail") {
+          document.querySelector<HTMLElement>(".detail-panel")?.focus();
+        }
+      },
     });
 
     // Initial fetch

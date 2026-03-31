@@ -21,6 +21,23 @@ body {
   color: var(--fg-primary);
 }
 
+/* Panels are focusable for Tab navigation */
+.sidebar:focus,
+.game-list__body:focus,
+.detail-panel:focus {
+  outline: 1px solid var(--fg-border);
+  outline-offset: -1px;
+}
+
+/* Suppress default focus outline elsewhere */
+:focus-visible {
+  outline: 1px solid var(--fg-border);
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
 #root {
   display: flex;
   flex-direction: column;
@@ -341,6 +358,32 @@ body {
   border-top: 1px solid var(--border-color);
   font-size: var(--font-size);
   line-height: var(--char-h);
+}
+
+.detail-panel__boxart-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 1ch;
+  border-bottom: 1px solid var(--border-color);
+  background: #000;
+}
+
+.detail-panel__boxart {
+  max-width: 100%;
+  max-height: 24ch;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.detail-panel__quantize-toggle {
+  padding: 0 1ch;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.detail-panel__quantize-toggle:hover {
+  color: var(--fg-primary);
 }
 
 .detail-panel__empty {

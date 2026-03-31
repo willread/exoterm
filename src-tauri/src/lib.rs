@@ -22,6 +22,7 @@ pub fn run() {
             commands::games::search_games,
             commands::games::get_game,
             commands::games::get_filter_options,
+            commands::games::get_game_images,
             commands::games::toggle_favorite,
             commands::collections::scan_collection,
             commands::collections::list_collections,

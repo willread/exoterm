@@ -33,7 +33,7 @@ export const FilterPanel: Component = () => {
   const opts = () => filterOptions() ?? { genres: [], developers: [], publishers: [], years: [], series: [], platforms: [] };
 
   return (
-    <div class="sidebar">
+    <div class="sidebar" tabindex="-1">
       {/* Content Type Tabs */}
       <div class="content-tabs">
         <For each={CONTENT_TYPES}>
@@ -112,6 +112,50 @@ export const FilterPanel: Component = () => {
                 onClick={() => setFilter("year", y)}
               >
                 {y}
+              </div>
+            )}
+          </For>
+        </div>
+      </Show>
+
+      {/* Developer filter */}
+      <Show when={opts().developers.length > 0}>
+        <div class="sidebar__title">
+          Developer
+          <Show when={filters.developer}>
+            {" "}[<span style="cursor:pointer" onClick={() => clearFilter("developer")}>x</span>]
+          </Show>
+        </div>
+        <div class="sidebar__section">
+          <For each={opts().developers.slice(0, 30)}>
+            {(d) => (
+              <div
+                class={`sidebar__item ${filters.developer === d ? "sidebar__item--active" : ""}`}
+                onClick={() => setFilter("developer", d)}
+              >
+                {d}
+              </div>
+            )}
+          </For>
+        </div>
+      </Show>
+
+      {/* Publisher filter */}
+      <Show when={opts().publishers.length > 0}>
+        <div class="sidebar__title">
+          Publisher
+          <Show when={filters.publisher}>
+            {" "}[<span style="cursor:pointer" onClick={() => clearFilter("publisher")}>x</span>]
+          </Show>
+        </div>
+        <div class="sidebar__section">
+          <For each={opts().publishers.slice(0, 30)}>
+            {(p) => (
+              <div
+                class={`sidebar__item ${filters.publisher === p ? "sidebar__item--active" : ""}`}
+                onClick={() => setFilter("publisher", p)}
+              >
+                {p}
               </div>
             )}
           </For>

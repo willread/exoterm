@@ -112,7 +112,7 @@ export const GameList: Component = () => {
         </div>
       </div>
 
-      <div class="game-list__body" ref={listRef}>
+      <div class="game-list__body" ref={listRef} tabindex="-1">
         <Show
           when={gameList().length > 0}
           fallback={

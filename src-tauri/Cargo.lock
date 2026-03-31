@@ -730,6 +730,7 @@ dependencies = [
 name = "exodos-frontend"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
  "quick-xml 0.37.5",
  "rusqlite",
  "serde",

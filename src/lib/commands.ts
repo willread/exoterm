@@ -35,6 +35,15 @@ export async function getFilterOptions(
   return invoke("get_filter_options", { content_type: contentType });
 }
 
+export interface GameImage {
+  category: string;
+  data_url: string;
+}
+
+export async function getGameImages(id: number): Promise<GameImage[]> {
+  return invoke("get_game_images", { id });
+}
+
 export async function toggleFavorite(id: number): Promise<boolean> {
   return invoke("toggle_favorite", { id });
 }

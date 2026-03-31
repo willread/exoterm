@@ -1,11 +1,64 @@
-import { Component, Show } from "solid-js";
+import { Component, Show, createResource, createSignal, createEffect } from "solid-js";
 import { selectedGame } from "../lib/store";
+import { getGameImages } from "../lib/commands";
+import type { GameImage } from "../lib/commands";
+
+/** Quantize each RGB channel to 6-bit precision (VGA DAC), giving a 256-color-era look. */
+function applyVgaQuantize(img: HTMLImageElement): string {
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return img.src;
+  ctx.drawImage(img, 0, 0);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    // Round each channel to nearest multiple of 4 (6-bit precision: 0-252 in steps of 4)
+    data[i] = Math.round(data[i] / 4) * 4;
+    data[i + 1] = Math.round(data[i + 1] / 4) * 4;
+    data[i + 2] = Math.round(data[i + 2] / 4) * 4;
+  }
+  ctx.putImageData(imageData, 0, 0);
+  return canvas.toDataURL();
+}
+
+const BoxArt: Component<{ image: GameImage; quantize: boolean }> = (props) => {
+  const [displaySrc, setDisplaySrc] = createSignal(props.image.data_url);
+
+  const handleLoad = (e: Event) => {
+    if (!props.quantize) return;
+    const img = e.currentTarget as HTMLImageElement;
+    const quantized = applyVgaQuantize(img);
+    setDisplaySrc(quantized);
+  };
+
+  return (
+    <div class="detail-panel__boxart-wrap">
+      <img
+        src={displaySrc()}
+        alt={props.image.category}
+        class="detail-panel__boxart"
+        onLoad={handleLoad}
+        title={props.image.category}
+      />
+    </div>
+  );
+};
 
 export const DetailPanel: Component = () => {
   const game = () => selectedGame();
+  const [quantize, setQuantize] = createSignal(true);
+
+  const [images] = createResource(
+    () => game()?.id,
+    (id) => (id ? getGameImages(id) : Promise.resolve([] as GameImage[]))
+  );
+
+  const boxArt = () => images()?.[0] ?? null;
 
   return (
-    <div class="detail-panel">
+    <div class="detail-panel" tabindex="-1">
       <Show
         when={game()}
         fallback={
@@ -17,6 +70,22 @@ export const DetailPanel: Component = () => {
         {(g) => (
           <>
             <div class="detail-panel__title">{g().title}</div>
+
+            {/* Box art */}
+            <Show when={boxArt()}>
+              {(img) => <BoxArt image={img()} quantize={quantize()} />}
+            </Show>
+
+            {/* 256-color toggle */}
+            <Show when={images() && images()!.length > 0}>
+              <div
+                class="detail-panel__quantize-toggle"
+                onClick={() => setQuantize(!quantize())}
+                title="Toggle 256-color VGA quantize filter"
+              >
+                [{quantize() ? "x" : " "}] 256-color filter
+              </div>
+            </Show>
 
             <Show when={g().platform}>
               <div class="detail-panel__field">

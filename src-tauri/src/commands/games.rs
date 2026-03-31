@@ -1,7 +1,8 @@
+use std::path::PathBuf;
 use tauri::State;
 
 use crate::db::queries;
-use crate::models::{FilterOptions, Game, SearchResult};
+use crate::models::{FilterOptions, Game, GameImage, SearchResult};
 use crate::state::AppState;
 
 #[tauri::command]
@@ -54,6 +55,89 @@ pub fn get_filter_options(
 ) -> Result<FilterOptions, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
     queries::get_filter_options(&db, &content_type.unwrap_or_default()).map_err(|e| e.to_string())
+}
+
+/// Image category priority: box art first, then screenshots
+const IMAGE_CATEGORIES: &[&str] = &[
+    "Box - Front",
+    "Box - Front - Reconstructed",
+    "Fanart - Box - Front",
+    "Screenshot - Game Title",
+    "Screenshot - Gameplay",
+];
+
+#[tauri::command]
+pub fn get_game_images(state: State<AppState>, id: i64) -> Result<Vec<GameImage>, String> {
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+
+    let (app_path, collection_path): (String, String) = db
+        .query_row(
+            "SELECT g.application_path, c.path
+             FROM games g
+             JOIN collections c ON g.collection_id = c.id
+             WHERE g.id = ?",
+            [id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .map_err(|e| e.to_string())?;
+    drop(db);
+
+    // Derive game folder from application_path: "eXo\!dos\GameName\GameName.bat" -> "GameName"
+    let path_buf = PathBuf::from(&app_path);
+    let segments: Vec<_> = path_buf.components().collect();
+    let game_folder = if segments.len() >= 3 {
+        segments[segments.len() - 2]
+            .as_os_str()
+            .to_string_lossy()
+            .to_string()
+    } else {
+        return Ok(vec![]);
+    };
+
+    let images_base = PathBuf::from(&collection_path).join("Images").join(&game_folder);
+    if !images_base.exists() {
+        return Ok(vec![]);
+    }
+
+    let mut results = Vec::new();
+
+    for category in IMAGE_CATEGORIES {
+        let cat_dir = images_base.join(category);
+        if !cat_dir.is_dir() {
+            continue;
+        }
+        // Take the first image file found
+        if let Ok(entries) = std::fs::read_dir(&cat_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if let Some(ext) = path.extension() {
+                    let ext = ext.to_string_lossy().to_lowercase();
+                    if matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "gif" | "webp") {
+                        if let Ok(data) = std::fs::read(&path) {
+                            use base64::Engine;
+                            let b64 = base64::engine::general_purpose::STANDARD.encode(&data);
+                            let mime = match ext.as_str() {
+                                "jpg" | "jpeg" => "image/jpeg",
+                                "gif" => "image/gif",
+                                "webp" => "image/webp",
+                                _ => "image/png",
+                            };
+                            results.push(GameImage {
+                                category: category.to_string(),
+                                data_url: format!("data:{};base64,{}", mime, b64),
+                            });
+                            break; // one image per category
+                        }
+                    }
+                }
+            }
+        }
+        if results.len() >= 2 {
+            break; // box art + one screenshot is enough
+        }
+    }
+
+    Ok(results)
 }
 
 #[tauri::command]
