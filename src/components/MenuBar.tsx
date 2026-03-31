@@ -1,4 +1,4 @@
-import { Component, Show, createSignal } from "solid-js";
+import { Component, Show, onMount, onCleanup } from "solid-js";
 import { activeMenu, setActiveMenu, setActiveDialog, setFilters, theme, setTheme, crtEnabled, setCrtEnabled } from "../lib/store";
 import type { Theme } from "../lib/types";
 
@@ -10,11 +10,22 @@ const THEMES: { label: string; value: Theme }[] = [
 ];
 
 export const MenuBar: Component = () => {
+  let menuBarRef: HTMLDivElement | undefined;
+
   const toggleMenu = (menu: string) => {
     setActiveMenu(activeMenu() === menu ? null : menu);
   };
 
   const closeMenu = () => setActiveMenu(null);
+
+  const handleDocumentClick = (e: MouseEvent) => {
+    if (activeMenu() && menuBarRef && !menuBarRef.contains(e.target as Node)) {
+      closeMenu();
+    }
+  };
+
+  onMount(() => document.addEventListener("click", handleDocumentClick));
+  onCleanup(() => document.removeEventListener("click", handleDocumentClick));
 
   const cycleTheme = () => {
     const current = theme();
@@ -26,7 +37,7 @@ export const MenuBar: Component = () => {
   };
 
   return (
-    <div class="menu-bar no-select">
+    <div class="menu-bar no-select" ref={menuBarRef}>
       {/* File */}
       <div
         class={`menu-bar__item ${activeMenu() === "file" ? "menu-bar__item--active" : ""}`}
