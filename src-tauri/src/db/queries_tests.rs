@@ -195,9 +195,11 @@ fn test_sort_by_developer() {
         false, "developer", "asc", 0, 100,
     )
     .unwrap();
-    // "id Software" (3 games) comes before "Maxis"
+    // SQLite default ASC: uppercase 'M' (Maxis) sorts before lowercase 'i' (id Software)
     let devs: Vec<Option<&str>> = result.games.iter().map(|g| g.developer.as_deref()).collect();
-    assert!(devs.iter().position(|d| *d == Some("Maxis")).unwrap() > 0);
+    let maxis_pos = devs.iter().position(|d| *d == Some("Maxis")).unwrap();
+    let id_soft_pos = devs.iter().position(|d| *d == Some("id Software")).unwrap();
+    assert!(maxis_pos < id_soft_pos, "Maxis (M) should sort before id Software (i) in ASCII order");
 }
 
 #[test]
