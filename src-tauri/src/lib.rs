@@ -7,8 +7,7 @@ mod xml;
 use models::AppConfig;
 use rusqlite::Connection;
 use state::AppState;
-use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -65,9 +64,6 @@ fn initialize_state() -> Result<AppState, String> {
         db: Mutex::new(conn),
         config: Mutex::new(config),
         game_pid: Mutex::new(None),
-        game_stdin: Mutex::new(None),
-        choice_dir: Mutex::new(None),
-        game_running: Arc::new(AtomicBool::new(false)),
     })
 }
 

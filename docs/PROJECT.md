@@ -35,13 +35,11 @@ A DOS-style alternate frontend for eXo collections (eXoDOS, eXoWin9x, etc.) buil
 - **Reset Filters button**: clears all category filters and favoritesOnly
 - **Sidebar scrolls as whole** — block layout, no sub-section overflow
 
-### Game Launch & CHOICE Interception
-- Games launch via `cmd /C <batch_file>` with the game's root folder as working directory
-- stdout/stderr are NOT piped (Stdio::inherit) — this lets DOSBox and other emulators own their console window
-- **CHOICE.EXE shim**: A `choice.bat` + `choice.cmd` placed in a shims directory prepended to PATH intercepts DOS CHOICE.EXE calls
-- **File-based protocol**: Instead of stdout detection, the shim writes `choice_request_msg.txt` and `choice_request_opts.txt` to `%EXO_CHOICE_DIR%`. A Rust poller thread detects these files and emits a `game-choice` event to the frontend
-- **Frontend dialog**: App.tsx shows a Dialog with the CHOICE message and clickable option buttons. User's selection triggers `send_game_input` which writes `choice_response.txt` for the shim to read
-- **Process lifecycle**: `game_running` AtomicBool flag coordinates the poller thread; `game-exited` event fires when the child process exits; `kill_game` uses `taskkill /F /T` for process tree cleanup
+### Game Launch
+- Games launch via `cmd /C start cmd /C <batch_file>` — opens a real CMD window so the user can interact with CHOICE prompts, config menus, etc. natively
+- Working directory set to game's root folder (or batch file's parent if no root_folder in XML)
+- `kill_game` uses `taskkill /F /T` for process tree cleanup
+- `game-exited` event fires when the launcher process exits
 
 ### Favorites
 - Read from LaunchBox XML `<Favorite>` field during scan

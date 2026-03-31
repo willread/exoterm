@@ -1,5 +1,4 @@
-import { Component, For, onMount, onCleanup, createSignal } from "solid-js";
-import { listen } from "@tauri-apps/api/event";
+import { Component, onMount, onCleanup, createSignal } from "solid-js";
 import { MenuBar } from "./components/MenuBar";
 import { StatusBar } from "./components/StatusBar";
 import { SearchBar } from "./components/SearchBar";
@@ -19,14 +18,11 @@ import {
   selectedIndex,
   setSelectedIndex,
   setSearchQuery,
-  gameChoice,
-  setGameChoice,
   fetchGames,
 } from "./lib/store";
 import { initKeyboardHandler, registerKey, guardedLaunch } from "./lib/keyboard";
-import { launchGame, toggleFavorite, sendGameInput } from "./lib/commands";
+import { launchGame, toggleFavorite } from "./lib/commands";
 import { ResizeHandle } from "./components/ResizeHandle";
-import type { ChoicePayload } from "./lib/types";
 
 const App: Component = () => {
   const [sidebarWidth, setSidebarWidth] = createSignal(200);
@@ -39,21 +35,6 @@ const App: Component = () => {
 
     // Initialize keyboard handler
     initKeyboardHandler();
-
-    // Listen for CHOICE.EXE prompts from the game process
-    const unlistenChoice = await listen<ChoicePayload>("game-choice", (event) => {
-      setGameChoice(event.payload);
-    });
-
-    // Clear choice dialog when game exits
-    const unlistenExit = await listen("game-exited", () => {
-      setGameChoice(null);
-    });
-
-    onCleanup(() => {
-      unlistenChoice();
-      unlistenExit();
-    });
 
     // Register global hotkeys
     registerKey({
@@ -73,9 +54,7 @@ const App: Component = () => {
       key: "Escape",
       context: "global",
       handler: () => {
-        if (gameChoice()) {
-          setGameChoice(null);
-        } else if (activeDialog()) {
+        if (activeDialog()) {
           setActiveDialog(null);
         } else if (activeMenu()) {
           setActiveMenu(null);
@@ -184,11 +163,6 @@ const App: Component = () => {
 
   });
 
-  const handleChoice = (option: string) => {
-    setGameChoice(null);
-    sendGameInput(option).catch(console.error);
-  };
-
   return (
     <>
       <div class="crt-overlay"><div class="crt-rgb" /></div>
@@ -215,31 +189,6 @@ const App: Component = () => {
 
       {/* Dialogs */}
       <CollectionPicker />
-
-      {/* Game CHOICE.EXE prompt dialog */}
-      <Dialog
-        title="Game Prompt"
-        visible={gameChoice() !== null}
-        onClose={() => setGameChoice(null)}
-        footer={
-          <div style="display: flex; gap: 1ch; justify-content: center; flex-wrap: wrap;">
-            <For each={gameChoice()?.options ?? []}>
-              {(opt) => (
-                <button
-                  class="dialog__button"
-                  onClick={() => handleChoice(opt)}
-                >
-                  {`< ${opt} >`}
-                </button>
-              )}
-            </For>
-          </div>
-        }
-      >
-        <div style="text-align: center; padding: 1ch; white-space: pre-wrap;">
-          {gameChoice()?.message || "The game is asking for input:"}
-        </div>
-      </Dialog>
 
       <Dialog
         title="About eXo Terminal"

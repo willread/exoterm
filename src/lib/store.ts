@@ -1,7 +1,7 @@
 import { createSignal, createResource } from "solid-js";
 import { createStore } from "solid-js/store";
 import { searchGames, getGame, getFilterOptions, listCollections } from "./commands";
-import type { ChoicePayload, SortDir, SortField, Theme, GameSummary, FilterOptions } from "./types";
+import type { SortDir, SortField, Theme, GameSummary, FilterOptions } from "./types";
 
 // ── App state ──────────────────────────────────
 export const [theme, setTheme] = createSignal<Theme>("blue");
@@ -12,9 +12,6 @@ export const [fontSize, setFontSize] = createSignal(16); // px, default 16
 // ── Dialog state ───────────────────────────────
 export const [activeDialog, setActiveDialog] = createSignal<string | null>(null);
 export const [activeMenu, setActiveMenu] = createSignal<string | null>(null);
-
-// ── Game console / CHOICE dialog ───────────────
-export const [gameChoice, setGameChoice] = createSignal<ChoicePayload | null>(null);
 
 // ── Search & filter state ──────────────────────
 export const [searchQuery, setSearchQuery] = createSignal("");
