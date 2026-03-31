@@ -1,14 +1,16 @@
-use std::io::Read;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::thread;
+use std::time::Duration;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::state::AppState;
 
 /// The choice.bat shim that replaces CHOICE.EXE.
-/// It outputs a protocol string our app reads, then polls a temp file for the response.
-/// The Rust send_game_input command writes the user's choice to %EXO_CHOICE_DIR%\choice_response.txt
+/// Instead of going through stdout (which requires piping and breaks console-based games),
+/// it writes request files that our Rust poller detects, then polls for a response file.
 const CHOICE_SHIM: &str = r#"@echo off
 setlocal enabledelayedexpansion
 set "C=YN"
@@ -43,12 +45,16 @@ shift
 shift
 goto :parse
 :run
-echo ##CHOICE##!M!##!C!##
+rem Write request files for the Rust poller to detect
+echo !M!>"%EXO_CHOICE_DIR%\choice_request_msg.txt"
+echo !C!>"%EXO_CHOICE_DIR%\choice_request_opts.txt"
 del "%EXO_CHOICE_DIR%\choice_response.txt" 2>nul
 :waitloop
 if exist "%EXO_CHOICE_DIR%\choice_response.txt" (
     set /p "R=" < "%EXO_CHOICE_DIR%\choice_response.txt"
     del "%EXO_CHOICE_DIR%\choice_response.txt" 2>nul
+    del "%EXO_CHOICE_DIR%\choice_request_msg.txt" 2>nul
+    del "%EXO_CHOICE_DIR%\choice_request_opts.txt" 2>nul
     goto :calc
 )
 ping -n 1 -w 200 127.0.0.1 >nul 2>&1
@@ -75,10 +81,24 @@ fn ensure_choice_shim() -> Result<PathBuf, String> {
         .join("shims");
     std::fs::create_dir_all(&shims_dir).map_err(|e| e.to_string())?;
 
-    let shim_path = shims_dir.join("choice.bat");
-    std::fs::write(&shim_path, CHOICE_SHIM).map_err(|e| e.to_string())?;
+    // Write both .bat and .cmd versions for maximum coverage.
+    // When a batch file calls `CHOICE`, Windows checks PATHEXT extensions in order:
+    // .COM, .EXE, .BAT, .CMD — our shims dir is first on PATH so .BAT wins.
+    // Writing .CMD too covers edge cases.
+    let shim_bat = shims_dir.join("choice.bat");
+    std::fs::write(&shim_bat, CHOICE_SHIM).map_err(|e| e.to_string())?;
+
+    let shim_cmd = shims_dir.join("choice.cmd");
+    std::fs::write(&shim_cmd, CHOICE_SHIM).map_err(|e| e.to_string())?;
 
     Ok(shims_dir)
+}
+
+/// Clean up any leftover choice request/response files.
+fn cleanup_choice_files(dir: &PathBuf) {
+    let _ = std::fs::remove_file(dir.join("choice_request_msg.txt"));
+    let _ = std::fs::remove_file(dir.join("choice_request_opts.txt"));
+    let _ = std::fs::remove_file(dir.join("choice_response.txt"));
 }
 
 #[tauri::command]
@@ -120,58 +140,66 @@ pub fn launch_game(
     // Kill any existing game before launching
     kill_current_game(&state);
 
-    // Set up the CHOICE shim so CHOICE.EXE never runs
+    // Set up the CHOICE shim so CHOICE.EXE calls are intercepted
     let shims_dir = ensure_choice_shim()?;
+
+    // Clean up any leftover request files from previous runs
+    cleanup_choice_files(&shims_dir);
 
     // Store shims_dir so send_game_input can write the response file
     *state.choice_dir.lock().map_err(|e| e.to_string())? = Some(shims_dir.clone());
+
+    // Mark game as running (used by poller thread to know when to stop)
+    state.game_running.store(true, Ordering::SeqCst);
+    let running_flag = Arc::clone(&state.game_running);
 
     // Prepend shims dir to PATH so our choice.bat overrides the real CHOICE.EXE
     let current_path = std::env::var("PATH").unwrap_or_default();
     let new_path = format!("{};{}", shims_dir.to_string_lossy(), current_path);
 
-    let mut child = Command::new("cmd")
+    // Launch the game WITHOUT piping stdout/stderr.
+    // This lets the game process own its console window (critical for DOSBox etc).
+    // CHOICE communication happens entirely via files, not stdout.
+    let child = Command::new("cmd")
         .args(["/C", &full_path.to_string_lossy()])
         .current_dir(&work_dir)
         .env("PATH", &new_path)
         .env("EXO_CHOICE_DIR", shims_dir.to_string_lossy().as_ref())
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stdin(Stdio::null())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
         .spawn()
         .map_err(|e| format!("Failed to launch game: {}", e))?;
 
     let pid = child.id();
-    let stdout = child.stdout.take().unwrap();
-    let stderr = child.stderr.take().unwrap();
-    let stdin = child.stdin.take().unwrap();
 
-    // Store pid and stdin
+    // Store pid (no stdin handle needed — CHOICE uses files now)
     *state.game_pid.lock().map_err(|e| e.to_string())? = Some(pid);
-    *state.game_stdin.lock().map_err(|e| e.to_string())? = Some(stdin);
+    *state.game_stdin.lock().map_err(|e| e.to_string())? = None;
 
-    // Wait for child in background; emit game-exited only when the process truly exits
+    // Wait for child in background; emit game-exited when the process exits
     {
         let app_handle = app.clone();
+        let choice_dir = shims_dir.clone();
+        let flag = Arc::clone(&running_flag);
+        let mut child = child;
         thread::spawn(move || {
             let _ = child.wait();
+            // Signal the poller to stop
+            flag.store(false, Ordering::SeqCst);
+            // Clean up choice files
+            cleanup_choice_files(&choice_dir);
             app_handle.emit("game-exited", ()).ok();
         });
     }
 
-    // Spawn stdout reader thread — detects CHOICE protocol only
+    // Spawn a file-poller thread that watches for choice request files from the shim
     {
         let app_handle = app.clone();
+        let choice_dir = shims_dir;
+        let flag = running_flag;
         thread::spawn(move || {
-            read_output_stream(stdout, app_handle);
-        });
-    }
-
-    // Merge stderr into the same CHOICE detection stream
-    {
-        let app_handle = app.clone();
-        thread::spawn(move || {
-            read_output_stream(stderr, app_handle);
+            poll_choice_requests(choice_dir, app_handle, flag);
         });
     }
 
@@ -179,61 +207,59 @@ pub fn launch_game(
     Ok(format!("Launched: {}", full_path.display()))
 }
 
-/// Read from a process output stream and detect our CHOICE shim protocol.
-/// Does NOT emit game-exited — that is handled by the child.wait() thread.
-fn read_output_stream<R: Read + Send + 'static>(stream: R, app: AppHandle) {
-    let mut buf = [0u8; 256];
-    let mut accumulated = String::new();
-    let mut reader = stream;
+/// Poll for choice request files written by the CHOICE.BAT shim.
+/// When both choice_request_msg.txt and choice_request_opts.txt exist,
+/// emit a "game-choice" event to the frontend.
+fn poll_choice_requests(dir: PathBuf, app: AppHandle, running: Arc<AtomicBool>) {
+    let msg_path = dir.join("choice_request_msg.txt");
+    let opts_path = dir.join("choice_request_opts.txt");
+    let response_path = dir.join("choice_response.txt");
 
-    loop {
-        match reader.read(&mut buf) {
-            Ok(0) => break,
-            Ok(n) => {
-                let chunk = String::from_utf8_lossy(&buf[..n]).to_string();
-                accumulated.push_str(&chunk);
+    while running.load(Ordering::SeqCst) {
+        thread::sleep(Duration::from_millis(150));
 
-                // Check for our CHOICE shim protocol: ##CHOICE##message##options##
-                if let Some(choice) = detect_choice_protocol(&accumulated) {
-                    app.emit("game-choice", choice).ok();
-                    accumulated.clear();
-                } else if accumulated.len() > 4096 {
-                    // Prevent unbounded accumulation
-                    accumulated = accumulated[accumulated.len() - 512..].to_string();
+        // Check if both request files exist (written by the CHOICE shim)
+        if msg_path.exists() && opts_path.exists() {
+            // Small delay to ensure file writes are complete
+            thread::sleep(Duration::from_millis(50));
+
+            let message = std::fs::read_to_string(&msg_path)
+                .unwrap_or_default()
+                .trim()
+                .to_string();
+            let options_str = std::fs::read_to_string(&opts_path)
+                .unwrap_or_default()
+                .trim()
+                .to_string();
+
+            // Options is a string like "YN" — each character is a choice
+            let options: Vec<String> = options_str
+                .chars()
+                .filter(|c| c.is_alphanumeric())
+                .map(|c| c.to_uppercase().to_string())
+                .collect();
+
+            if !options.is_empty() {
+                let payload = ChoicePayload {
+                    message: if message.is_empty() {
+                        "The game is asking for input:".to_string()
+                    } else {
+                        message
+                    },
+                    options,
+                };
+                app.emit("game-choice", payload).ok();
+            }
+
+            // Wait until the user responds (response file appears) or game exits
+            while running.load(Ordering::SeqCst) {
+                thread::sleep(Duration::from_millis(150));
+                if response_path.exists() || !opts_path.exists() {
+                    break;
                 }
             }
-            Err(_) => break,
         }
     }
-}
-
-/// Detect our choice.bat protocol: ##CHOICE##message##options##
-fn detect_choice_protocol(text: &str) -> Option<ChoicePayload> {
-    let marker = "##CHOICE##";
-    let start = text.find(marker)?;
-    let after = &text[start + marker.len()..];
-
-    // Find ##options## — message is between first ## and second ##
-    let parts: Vec<&str> = after.splitn(3, "##").collect();
-    if parts.len() < 2 {
-        return None;
-    }
-
-    let message = parts[0].trim().to_string();
-    let options_str = parts[1].trim();
-
-    // Options is a string like "YN" — each character is an option
-    let options: Vec<String> = options_str
-        .chars()
-        .filter(|c| c.is_alphanumeric())
-        .map(|c| c.to_uppercase().to_string())
-        .collect();
-
-    if options.is_empty() {
-        return None;
-    }
-
-    Some(ChoicePayload { message, options })
 }
 
 #[derive(Clone, serde::Serialize)]
@@ -248,8 +274,12 @@ pub fn send_game_input(state: State<AppState>, input: String) -> Result<(), Stri
     let guard = state.choice_dir.lock().map_err(|e| e.to_string())?;
     if let Some(ref dir) = *guard {
         let response_path = dir.join("choice_response.txt");
-        // Write just the first character (what set /p will read)
-        let first_char = input.chars().next().map(|c| c.to_string()).unwrap_or_default();
+        // Write just the first character (what the shim reads via `set /p`)
+        let first_char = input
+            .chars()
+            .next()
+            .map(|c| c.to_string())
+            .unwrap_or_default();
         std::fs::write(&response_path, first_char).map_err(|e| e.to_string())?;
     }
     Ok(())
@@ -263,15 +293,18 @@ pub fn kill_game(state: State<AppState>) -> Result<(), String> {
 
 /// Kill the tracked game process tree using taskkill.
 pub fn kill_current_game(state: &AppState) {
-    // Close stdin first
+    // Signal poller thread to stop
+    state.game_running.store(false, Ordering::SeqCst);
+
+    // Clear stdin handle
     if let Ok(mut guard) = state.game_stdin.lock() {
         guard.take();
     }
 
-    // Clean up any pending choice response file
+    // Clean up any pending choice files
     if let Ok(mut guard) = state.choice_dir.lock() {
         if let Some(ref dir) = *guard {
-            let _ = std::fs::remove_file(dir.join("choice_response.txt"));
+            cleanup_choice_files(dir);
         }
         guard.take();
     }
