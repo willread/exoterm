@@ -8,6 +8,7 @@ use models::AppConfig;
 use rusqlite::Connection;
 use state::AppState;
 use std::sync::Mutex;
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -26,9 +27,16 @@ pub fn run() {
             commands::collections::list_collections,
             commands::collections::validate_collection_path,
             commands::launch::launch_game,
+            commands::launch::kill_game,
             commands::config::get_config,
             commands::config::set_config,
         ])
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { .. } = event {
+                let state = window.state::<AppState>();
+                commands::launch::kill_current_game(&state);
+            }
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -52,6 +60,7 @@ fn initialize_state() -> Result<AppState, String> {
     Ok(AppState {
         db: Mutex::new(conn),
         config: Mutex::new(config),
+        current_game: Mutex::new(None),
     })
 }
 

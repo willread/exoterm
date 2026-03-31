@@ -60,6 +60,10 @@ export async function launchGame(id: number): Promise<string> {
   return invoke("launch_game", { id });
 }
 
+export async function killGame(): Promise<void> {
+  return invoke("kill_game");
+}
+
 export async function getConfig(): Promise<AppConfig> {
   return invoke("get_config");
 }
