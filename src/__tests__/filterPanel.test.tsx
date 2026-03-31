@@ -554,35 +554,42 @@ describe("FilterPanel developer and publisher sections", () => {
 // ── Reset Filters button ───────────────────────────────────────────────────────
 
 describe("FilterPanel Reset Filters button", () => {
-  it("does not show Reset Filters when no filters are active", async () => {
+  it("is always visible even when no filters are active", async () => {
     await populateFilterOptions();
     dispose = render(() => <FilterPanel />, document.body);
     const resetBtn = document.querySelector(".sidebar__reset-btn");
-    expect(resetBtn).toBeNull();
+    expect(resetBtn).not.toBeNull();
   });
 
-  it("shows Reset Filters when a platform is selected", async () => {
+  it("has disabled class when no filters are active", async () => {
+    await populateFilterOptions();
+    dispose = render(() => <FilterPanel />, document.body);
+    const resetBtn = document.querySelector(".sidebar__reset-btn");
+    expect(resetBtn?.classList.contains("sidebar__reset-btn--disabled")).toBe(true);
+  });
+
+  it("does not have disabled class when a platform is selected", async () => {
     setFilters("platform", ["MS-DOS"]);
     await populateFilterOptions();
     dispose = render(() => <FilterPanel />, document.body);
     const resetBtn = document.querySelector(".sidebar__reset-btn");
-    expect(resetBtn).not.toBeNull();
+    expect(resetBtn?.classList.contains("sidebar__reset-btn--disabled")).toBe(false);
   });
 
-  it("shows Reset Filters when a genre is selected", async () => {
+  it("does not have disabled class when a genre is selected", async () => {
     setFilters("genre", ["Action"]);
     await populateFilterOptions();
     dispose = render(() => <FilterPanel />, document.body);
     const resetBtn = document.querySelector(".sidebar__reset-btn");
-    expect(resetBtn).not.toBeNull();
+    expect(resetBtn?.classList.contains("sidebar__reset-btn--disabled")).toBe(false);
   });
 
-  it("shows Reset Filters when favoritesOnly is true", async () => {
+  it("does not have disabled class when favoritesOnly is true", async () => {
     setFilters("favoritesOnly", true);
     await populateFilterOptions();
     dispose = render(() => <FilterPanel />, document.body);
     const resetBtn = document.querySelector(".sidebar__reset-btn");
-    expect(resetBtn).not.toBeNull();
+    expect(resetBtn?.classList.contains("sidebar__reset-btn--disabled")).toBe(false);
   });
 
   it("clicking Reset Filters clears all filter arrays", async () => {
@@ -611,7 +618,7 @@ describe("FilterPanel Reset Filters button", () => {
     expect(filters.favoritesOnly).toBe(false);
   });
 
-  it("Reset Filters button disappears after resetting", async () => {
+  it("Reset Filters button gains disabled class after resetting", async () => {
     setFilters("platform", ["MS-DOS"]);
     await populateFilterOptions();
     dispose = render(() => <FilterPanel />, document.body);
@@ -619,8 +626,21 @@ describe("FilterPanel Reset Filters button", () => {
     const resetBtn = document.querySelector(".sidebar__reset-btn") as HTMLElement;
     resetBtn.click();
 
-    const resetBtnAfter = document.querySelector(".sidebar__reset-btn");
-    expect(resetBtnAfter).toBeNull();
+    expect(resetBtn.classList.contains("sidebar__reset-btn--disabled")).toBe(true);
+  });
+
+  it("clicking disabled Reset Filters button does not reset filters", async () => {
+    // Filters are already empty — button is disabled
+    setFilters("sortBy", "title");
+    await populateFilterOptions();
+    dispose = render(() => <FilterPanel />, document.body);
+
+    const resetBtn = document.querySelector(".sidebar__reset-btn") as HTMLElement;
+    resetBtn.click();
+
+    // sortBy should not have changed
+    expect(filters.platform).toHaveLength(0);
+    expect(filters.genre).toHaveLength(0);
   });
 });
 

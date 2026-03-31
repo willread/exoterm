@@ -120,7 +120,7 @@ export const FilterPanel: Component = () => {
       onClick={() => setSectionOpen(props.sectionKey, (v) => !v)}
     >
       <span class="sidebar__section-arrow">
-        {sectionOpen[props.sectionKey] ? "\u25BC" : "\u25B6"}
+        {sectionOpen[props.sectionKey] ? "\u25BC" : "\u25B2"}
       </span>
       {" "}{sectionLabel(props.label, props.selected)}
     </div>
@@ -128,12 +128,13 @@ export const FilterPanel: Component = () => {
 
   return (
     <div class="sidebar" tabindex="-1">
-      {/* Reset Filters button — only shown when filters are active */}
-      <Show when={hasActiveFilters()}>
-        <div class="sidebar__reset-btn" onClick={resetAllFilters}>
-          Reset Filters
-        </div>
-      </Show>
+      {/* Reset Filters button — always visible, disabled when no filters active */}
+      <div
+        class={`sidebar__reset-btn${hasActiveFilters() ? "" : " sidebar__reset-btn--disabled"}`}
+        onClick={() => { if (hasActiveFilters()) resetAllFilters(); }}
+      >
+        Reset Filters
+      </div>
 
       {/* Platform section */}
       <Show when={opts().platforms.length > 1}>
@@ -177,7 +178,7 @@ export const FilterPanel: Component = () => {
                         class="sidebar__group-header"
                         onClick={() => toggleGroup(group.parent)}
                       >
-                        {expandedGroups().has(group.parent) ? "\u25BC" : "\u25B6"} {group.parent}
+                        {expandedGroups().has(group.parent) ? "\u25BC" : "\u25B2"} {group.parent}
                       </div>
                       <Show when={expandedGroups().has(group.parent)}>
                         <For each={group.children}>

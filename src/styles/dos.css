@@ -138,6 +138,7 @@ body {
   flex-shrink: 0;
   border-right: 1px solid var(--border-color);
   overflow-y: auto;
+  height: 100%;
 }
 
 .sidebar__section {
