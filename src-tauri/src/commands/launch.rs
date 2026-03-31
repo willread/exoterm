@@ -6,6 +6,71 @@ use tauri::{AppHandle, Emitter, State};
 
 use crate::state::AppState;
 
+/// The choice.bat shim that replaces CHOICE.EXE.
+/// It outputs a protocol string our app reads, then waits for input on stdin.
+const CHOICE_SHIM: &str = r#"@echo off
+setlocal enabledelayedexpansion
+set "C=YN"
+set "M="
+:parse
+if "%~1"=="" goto :run
+if /i "%~1"=="/N" (shift & goto :parse)
+if /i "%~1"=="/CS" (shift & goto :parse)
+if /i "%~1"=="/C" goto :setc
+if /i "%~1"=="/M" goto :setm
+if /i "%~1"=="/T" goto :skip2
+if /i "%~1"=="/D" goto :skip2
+set "A=%~1"
+if /i "!A:~0,3!"=="/C:" (set "C=!A:~3!" & shift & goto :parse)
+if /i "!A:~0,3!"=="/M:" (set "M=!A:~3!" & shift & goto :parse)
+if /i "!A:~0,3!"=="/T:" (shift & goto :parse)
+if /i "!A:~0,3!"=="/D:" (shift & goto :parse)
+shift
+goto :parse
+:setc
+shift
+set "C=%~1"
+shift
+goto :parse
+:setm
+shift
+set "M=%~1"
+shift
+goto :parse
+:skip2
+shift
+shift
+goto :parse
+:run
+echo ##CHOICE##!M!##!C!##
+set /p "R="
+set "R=!R:~0,1!"
+if not defined R set "R=!C:~0,1!"
+set /a "E=0"
+set /a "I=0"
+:calc
+call set "X=%%C:~!I!,1%%"
+if "!X!"=="" exit /b 0
+set /a "E+=1"
+if /i "!X!"=="!R!" exit /b !E!
+set /a "I+=1"
+goto :calc
+"#;
+
+/// Ensure the choice.bat shim exists in the app data shims directory.
+/// Returns the shims directory path.
+fn ensure_choice_shim() -> Result<PathBuf, String> {
+    let shims_dir = crate::dirs_next()
+        .map_err(|e| format!("Failed to get app dir: {}", e))?
+        .join("shims");
+    std::fs::create_dir_all(&shims_dir).map_err(|e| e.to_string())?;
+
+    let shim_path = shims_dir.join("choice.bat");
+    std::fs::write(&shim_path, CHOICE_SHIM).map_err(|e| e.to_string())?;
+
+    Ok(shims_dir)
+}
+
 #[tauri::command]
 pub fn launch_game(
     app: AppHandle,
@@ -45,9 +110,17 @@ pub fn launch_game(
     // Kill any existing game before launching
     kill_current_game(&state);
 
+    // Set up the CHOICE shim so CHOICE.EXE never runs
+    let shims_dir = ensure_choice_shim()?;
+
+    // Prepend shims dir to PATH so our choice.bat overrides the real CHOICE.EXE
+    let current_path = std::env::var("PATH").unwrap_or_default();
+    let new_path = format!("{};{}", shims_dir.to_string_lossy(), current_path);
+
     let mut child = Command::new("cmd")
         .args(["/C", &full_path.to_string_lossy()])
         .current_dir(&work_dir)
+        .env("PATH", &new_path)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -63,13 +136,12 @@ pub fn launch_game(
     *state.game_pid.lock().map_err(|e| e.to_string())? = Some(pid);
     *state.game_stdin.lock().map_err(|e| e.to_string())? = Some(stdin);
 
-    // We don't store the Child itself — process runs independently.
-    // Spawn it so it doesn't become a zombie (detach).
+    // Wait for child in background so it doesn't become a zombie
     thread::spawn(move || {
         let _ = child.wait();
     });
 
-    // Spawn stdout reader thread — emits chunks and detects CHOICE prompts
+    // Spawn stdout reader thread
     {
         let app_handle = app.clone();
         thread::spawn(move || {
@@ -89,8 +161,7 @@ pub fn launch_game(
     Ok(format!("Launched: {}", full_path.display()))
 }
 
-/// Read from a process output stream, emit chunks as `game-output` events,
-/// and detect CHOICE.EXE prompts to emit `game-choice` events.
+/// Read from a process output stream and detect our CHOICE shim protocol.
 fn read_output_stream<R: Read + Send + 'static>(stream: R, app: AppHandle) {
     let mut buf = [0u8; 256];
     let mut accumulated = String::new();
@@ -98,23 +169,18 @@ fn read_output_stream<R: Read + Send + 'static>(stream: R, app: AppHandle) {
 
     loop {
         match reader.read(&mut buf) {
-            Ok(0) => break, // EOF
+            Ok(0) => break,
             Ok(n) => {
                 let chunk = String::from_utf8_lossy(&buf[..n]).to_string();
                 accumulated.push_str(&chunk);
 
-                // Emit raw output for display
-                app.emit("game-output", chunk).ok();
-
-                // Check for CHOICE prompt: text ending in [X,Y,...]:
-                if let Some(choice) = detect_choice(&accumulated) {
+                // Check for our CHOICE shim protocol: ##CHOICE##message##options##
+                if let Some(choice) = detect_choice_protocol(&accumulated) {
                     app.emit("game-choice", choice).ok();
                     accumulated.clear();
-                } else if accumulated.contains('\n') {
-                    // Keep only the last incomplete line
-                    if let Some(last_newline) = accumulated.rfind('\n') {
-                        accumulated = accumulated[last_newline + 1..].to_string();
-                    }
+                } else if accumulated.len() > 4096 {
+                    // Prevent unbounded accumulation
+                    accumulated = accumulated[accumulated.len() - 512..].to_string();
                 }
             }
             Err(_) => break,
@@ -124,40 +190,31 @@ fn read_output_stream<R: Read + Send + 'static>(stream: R, app: AppHandle) {
     app.emit("game-exited", ()).ok();
 }
 
-/// Detect a CHOICE.EXE-style prompt in accumulated output.
-/// Returns Some(ChoicePayload) if found.
-fn detect_choice(text: &str) -> Option<ChoicePayload> {
-    // Match text ending with [...]: optionally followed by whitespace
-    // e.g. "Play again? [Y,N]:" or "Select [1,2,3,4,5]:"
-    let trimmed = text.trim_end_matches(|c: char| c == ' ' || c == '\t');
-    if !trimmed.ends_with(':') && !trimmed.ends_with(']') {
+/// Detect our choice.bat protocol: ##CHOICE##message##options##
+fn detect_choice_protocol(text: &str) -> Option<ChoicePayload> {
+    let marker = "##CHOICE##";
+    let start = text.find(marker)?;
+    let after = &text[start + marker.len()..];
+
+    // Find ##options## — message is between first ## and second ##
+    let parts: Vec<&str> = after.splitn(3, "##").collect();
+    if parts.len() < 2 {
         return None;
     }
 
-    // Find the last [...] block
-    let bracket_end = trimmed.rfind(']')?;
-    let bracket_start = trimmed[..bracket_end].rfind('[')?;
-    let inner = &trimmed[bracket_start + 1..bracket_end];
+    let message = parts[0].trim().to_string();
+    let options_str = parts[1].trim();
 
-    // Must contain only letters/numbers/commas
-    if !inner.chars().all(|c| c.is_alphanumeric() || c == ',') || inner.is_empty() {
-        return None;
-    }
-
-    let options: Vec<String> = inner
-        .split(',')
-        .map(|s| s.trim().to_uppercase())
-        .filter(|s| !s.is_empty())
+    // Options is a string like "YN" — each character is an option
+    let options: Vec<String> = options_str
+        .chars()
+        .filter(|c| c.is_alphanumeric())
+        .map(|c| c.to_uppercase().to_string())
         .collect();
 
-    if options.is_empty() || options.len() > 10 {
+    if options.is_empty() {
         return None;
     }
-
-    let message = text[..bracket_start]
-        .trim_start_matches(|c: char| c == '\r' || c == '\n')
-        .trim_end()
-        .to_string();
 
     Some(ChoicePayload { message, options })
 }
@@ -172,15 +229,10 @@ pub struct ChoicePayload {
 pub fn send_game_input(state: State<AppState>, input: String) -> Result<(), String> {
     let mut guard = state.game_stdin.lock().map_err(|e| e.to_string())?;
     if let Some(ref mut stdin) = *guard {
-        let to_write = if input.len() == 1 {
-            // Single char: send just the char (CHOICE reads one char without Enter)
-            input.into_bytes()
-        } else {
-            let mut b = input.into_bytes();
-            b.push(b'\n');
-            b
-        };
-        stdin.write_all(&to_write).map_err(|e| e.to_string())?;
+        // Always send with \r\n so set /p in the shim completes
+        let to_write = format!("{}\r\n", input);
+        stdin.write_all(to_write.as_bytes()).map_err(|e| e.to_string())?;
+        stdin.flush().map_err(|e| e.to_string())?;
     }
     Ok(())
 }
@@ -195,7 +247,7 @@ pub fn kill_game(state: State<AppState>) -> Result<(), String> {
 pub fn kill_current_game(state: &AppState) {
     // Close stdin first
     if let Ok(mut guard) = state.game_stdin.lock() {
-        guard.take(); // drop closes the handle
+        guard.take();
     }
 
     if let Ok(mut guard) = state.game_pid.lock() {

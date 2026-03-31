@@ -68,7 +68,7 @@ fn initialize_state() -> Result<AppState, String> {
     })
 }
 
-fn dirs_next() -> Result<std::path::PathBuf, String> {
+pub(crate) fn dirs_next() -> Result<std::path::PathBuf, String> {
     // Store in %APPDATA%/exo-terminal/
     if let Some(app_data) = std::env::var_os("APPDATA") {
         let dir = std::path::PathBuf::from(app_data).join("exo-terminal");
