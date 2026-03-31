@@ -12,6 +12,7 @@ A DOS-style alternate frontend for eXo collections (eXoDOS, eXoWin9x, etc.) buil
 
 ### Architecture
 - **Tauri 2**: Rust backend + SolidJS web frontend
+- **Tauri v2 command convention**: `#[tauri::command]` defaults to camelCase parameter deserialization. Our commands use `rename_all = "snake_case"` so the JS invoke calls can pass snake_case keys (e.g. `sort_by`, `content_type`)
 - **SQLite + FTS5**: Local database built by scanning LaunchBox XML metadata files. FTS5 provides instant prefix search across 162K+ games
 - **quick-xml streaming parser**: Handles the massive per-platform XML files in `Data/Platforms/` without loading them entirely into memory
 - **Per-platform XML files**: We parse `Data/Platforms/*.xml` (e.g., `MS-DOS.xml`, `MS-DOS Books.xml`) which contain full game records with ApplicationPath, Favorite, RootFolder, etc.
