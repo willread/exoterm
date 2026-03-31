@@ -1,9 +1,10 @@
-import { Component, For, Show, createSignal } from "solid-js";
+import { Component, For, Show, createSignal, createEffect } from "solid-js";
 import { createStore } from "solid-js/store";
 import {
   filters,
   setFilters,
   filterOptions,
+  fetchFilterOptions,
   setSelectedIndex,
 } from "../lib/store";
 
@@ -23,54 +24,53 @@ function buildGenreGroups(genres: string[]): GenreGroup[] {
   return Array.from(map.entries()).map(([parent, children]) => ({
     parent,
     children,
-    // A "flat" group has exactly one child whose value equals the parent (no "/" in genre)
     isFlat: children.length === 1 && children[0].value === parent,
   }));
 }
 
-// ── Multi-select toggle helper ────────────────────────────────────────────────
-function toggleItem<T>(current: T[], item: T): T[] {
-  return current.includes(item)
-    ? current.filter((x) => x !== item)
-    : [...current, item];
-}
-
 // ── Section header label ─────────────────────────────────────────────────────
-function sectionLabel(name: string, selected: (string | number)[]): string {
-  if (selected.length === 0) return name;
-  return `${name}: ${selected.join(", ")}`;
+function sectionLabel(name: string, selected: string | number | null): string {
+  if (!selected && selected !== 0) return name;
+  return `${name}: ${selected}`;
 }
 
 // ── Any filters active? ──────────────────────────────────────────────────────
 function hasActiveFilters(): boolean {
   return (
-    filters.genre.length > 0 ||
-    filters.developer.length > 0 ||
-    filters.publisher.length > 0 ||
-    filters.year.length > 0 ||
-    filters.series.length > 0 ||
-    filters.platform.length > 0 ||
+    filters.genre !== "" ||
+    filters.developer !== "" ||
+    filters.publisher !== "" ||
+    filters.year != null ||
+    filters.series !== "" ||
+    filters.platform !== "" ||
     filters.favoritesOnly
   );
 }
 
 function resetAllFilters() {
-  setFilters("genre", []);
-  setFilters("developer", []);
-  setFilters("publisher", []);
-  setFilters("year", []);
-  setFilters("series", []);
-  setFilters("platform", []);
+  setFilters("genre", "");
+  setFilters("developer", "");
+  setFilters("publisher", "");
+  setFilters("year", null);
+  setFilters("series", "");
+  setFilters("platform", "");
   setFilters("favoritesOnly", false);
   setFilters("offset", 0);
   setSelectedIndex(0);
 }
 
-function applyFilter(
-  field: "genre" | "developer" | "publisher" | "year" | "series" | "platform",
-  value: any
+// Single-select: clicking the active item deselects; clicking another selects it.
+function applyStringFilter(
+  field: "genre" | "developer" | "publisher" | "series" | "platform",
+  value: string
 ) {
-  setFilters(field, toggleItem(filters[field] as any[], value) as any);
+  setFilters(field, filters[field] === value ? "" : value);
+  setFilters("offset", 0);
+  setSelectedIndex(0);
+}
+
+function applyYearFilter(value: number) {
+  setFilters("year", filters.year === value ? null : value);
   setFilters("offset", 0);
   setSelectedIndex(0);
 }
@@ -79,8 +79,6 @@ type SectionKey = "platform" | "genre" | "year" | "developer" | "publisher" | "s
 
 // ── Main component ────────────────────────────────────────────────────────────
 export const FilterPanel: Component = () => {
-  // Section collapse/expand state (Platform starts expanded, others collapsed)
-  // Defined inside component so state resets per instance
   const [sectionOpen, setSectionOpen] = createStore<Record<SectionKey, boolean>>({
     platform: true,
     genre: false,
@@ -90,7 +88,6 @@ export const FilterPanel: Component = () => {
     series: false,
   });
 
-  // Genre sub-group collapse state (all collapsed initially)
   const [expandedGroups, setExpandedGroups] = createSignal<Set<string>>(new Set());
 
   const toggleGroup = (parent: string) => {
@@ -102,8 +99,22 @@ export const FilterPanel: Component = () => {
     });
   };
 
+  // Fetch filter options whenever any filter changes (cascading)
+  createEffect(() => {
+    const _ct = filters.contentType;
+    const _g = filters.genre;
+    const _d = filters.developer;
+    const _p = filters.publisher;
+    const _y = filters.year;
+    const _se = filters.series;
+    const _pl = filters.platform;
+    const _f = filters.favoritesOnly;
+    fetchFilterOptions();
+  });
+
   const opts = () =>
     filterOptions() ?? {
+      content_types: [],
       genres: [],
       developers: [],
       publishers: [],
@@ -114,7 +125,7 @@ export const FilterPanel: Component = () => {
 
   const genreGroups = () => buildGenreGroups(opts().genres);
 
-  const SectionHdr = (props: { sectionKey: SectionKey; label: string; selected: (string | number)[] }) => (
+  const SectionHdr = (props: { sectionKey: SectionKey; label: string; selected: string | number | null }) => (
     <div
       class="sidebar__section-header"
       onClick={() => setSectionOpen(props.sectionKey, (v) => !v)}
@@ -128,7 +139,52 @@ export const FilterPanel: Component = () => {
 
   return (
     <div class="sidebar" tabindex="-1">
-      {/* Reset Filters button — always visible, disabled when no filters active */}
+      {/* Content Type selector */}
+      <Show when={opts().content_types.length > 0}>
+        <div class="sidebar__section-header sidebar__section-header--top">
+          Type
+        </div>
+        <div class="sidebar__section">
+          <div
+            class={`sidebar__item ${filters.contentType === "" ? "sidebar__item--active" : ""}`}
+            onClick={() => {
+              setFilters("contentType", "");
+              setFilters("offset", 0);
+              setSelectedIndex(0);
+            }}
+          >
+            All
+          </div>
+          <For each={opts().content_types}>
+            {(ct) => (
+              <div
+                class={`sidebar__item ${filters.contentType === ct ? "sidebar__item--active" : ""}`}
+                onClick={() => {
+                  setFilters("contentType", filters.contentType === ct ? "" : ct);
+                  setFilters("offset", 0);
+                  setSelectedIndex(0);
+                }}
+              >
+                {ct}
+              </div>
+            )}
+          </For>
+        </div>
+      </Show>
+
+      {/* Favorites toggle */}
+      <div
+        class={`sidebar__section-header${filters.favoritesOnly ? " sidebar__section-header--active" : ""}`}
+        onClick={() => {
+          setFilters("favoritesOnly", !filters.favoritesOnly);
+          setFilters("offset", 0);
+          setSelectedIndex(0);
+        }}
+      >
+        {filters.favoritesOnly ? "\u2605" : "\u2606"} Favorites
+      </div>
+
+      {/* Reset Filters button */}
       <div
         class={`sidebar__reset-btn${hasActiveFilters() ? "" : " sidebar__reset-btn--disabled"}`}
         onClick={() => { if (hasActiveFilters()) resetAllFilters(); }}
@@ -138,14 +194,14 @@ export const FilterPanel: Component = () => {
 
       {/* Platform section */}
       <Show when={opts().platforms.length > 1}>
-        <SectionHdr sectionKey="platform" label="Platform" selected={filters.platform} />
+        <SectionHdr sectionKey="platform" label="Platform" selected={filters.platform || null} />
         <Show when={sectionOpen.platform}>
           <div class="sidebar__section">
             <For each={opts().platforms}>
               {(p) => (
                 <div
-                  class={`sidebar__item ${filters.platform.includes(p) ? "sidebar__item--active" : ""}`}
-                  onClick={() => applyFilter("platform", p)}
+                  class={`sidebar__item ${filters.platform === p ? "sidebar__item--active" : ""}`}
+                  onClick={() => applyStringFilter("platform", p)}
                 >
                   {p}
                 </div>
@@ -157,22 +213,20 @@ export const FilterPanel: Component = () => {
 
       {/* Genre section */}
       <Show when={opts().genres.length > 0}>
-        <SectionHdr sectionKey="genre" label="Genre" selected={filters.genre} />
+        <SectionHdr sectionKey="genre" label="Genre" selected={filters.genre || null} />
         <Show when={sectionOpen.genre}>
           <div class="sidebar__section">
             <For each={genreGroups()}>
               {(group) => (
                 <>
                   {group.isFlat ? (
-                    /* Flat genre — no nesting */
                     <div
-                      class={`sidebar__item ${filters.genre.includes(group.parent) ? "sidebar__item--active" : ""}`}
-                      onClick={() => applyFilter("genre", group.parent)}
+                      class={`sidebar__item ${filters.genre === group.parent ? "sidebar__item--active" : ""}`}
+                      onClick={() => applyStringFilter("genre", group.parent)}
                     >
                       {group.parent}
                     </div>
                   ) : (
-                    /* Group with sub-genres */
                     <>
                       <div
                         class="sidebar__group-header"
@@ -184,8 +238,8 @@ export const FilterPanel: Component = () => {
                         <For each={group.children}>
                           {(child) => (
                             <div
-                              class={`sidebar__item sidebar__item--indent ${filters.genre.includes(child.value) ? "sidebar__item--active" : ""}`}
-                              onClick={() => applyFilter("genre", child.value)}
+                              class={`sidebar__item sidebar__item--indent ${filters.genre === child.value ? "sidebar__item--active" : ""}`}
+                              onClick={() => applyStringFilter("genre", child.value)}
                             >
                               {child.label}
                             </div>
@@ -209,8 +263,8 @@ export const FilterPanel: Component = () => {
             <For each={opts().years}>
               {(y) => (
                 <div
-                  class={`sidebar__item ${filters.year.includes(y) ? "sidebar__item--active" : ""}`}
-                  onClick={() => applyFilter("year", y)}
+                  class={`sidebar__item ${filters.year === y ? "sidebar__item--active" : ""}`}
+                  onClick={() => applyYearFilter(y)}
                 >
                   {y}
                 </div>
@@ -222,14 +276,14 @@ export const FilterPanel: Component = () => {
 
       {/* Developer section */}
       <Show when={opts().developers.length > 0}>
-        <SectionHdr sectionKey="developer" label="Developer" selected={filters.developer} />
+        <SectionHdr sectionKey="developer" label="Developer" selected={filters.developer || null} />
         <Show when={sectionOpen.developer}>
           <div class="sidebar__section">
             <For each={opts().developers}>
               {(d) => (
                 <div
-                  class={`sidebar__item ${filters.developer.includes(d) ? "sidebar__item--active" : ""}`}
-                  onClick={() => applyFilter("developer", d)}
+                  class={`sidebar__item ${filters.developer === d ? "sidebar__item--active" : ""}`}
+                  onClick={() => applyStringFilter("developer", d)}
                 >
                   {d}
                 </div>
@@ -241,14 +295,14 @@ export const FilterPanel: Component = () => {
 
       {/* Publisher section */}
       <Show when={opts().publishers.length > 0}>
-        <SectionHdr sectionKey="publisher" label="Publisher" selected={filters.publisher} />
+        <SectionHdr sectionKey="publisher" label="Publisher" selected={filters.publisher || null} />
         <Show when={sectionOpen.publisher}>
           <div class="sidebar__section">
             <For each={opts().publishers}>
               {(p) => (
                 <div
-                  class={`sidebar__item ${filters.publisher.includes(p) ? "sidebar__item--active" : ""}`}
-                  onClick={() => applyFilter("publisher", p)}
+                  class={`sidebar__item ${filters.publisher === p ? "sidebar__item--active" : ""}`}
+                  onClick={() => applyStringFilter("publisher", p)}
                 >
                   {p}
                 </div>
@@ -260,14 +314,14 @@ export const FilterPanel: Component = () => {
 
       {/* Series section */}
       <Show when={opts().series.length > 0}>
-        <SectionHdr sectionKey="series" label="Series" selected={filters.series} />
+        <SectionHdr sectionKey="series" label="Series" selected={filters.series || null} />
         <Show when={sectionOpen.series}>
           <div class="sidebar__section">
             <For each={opts().series}>
               {(s) => (
                 <div
-                  class={`sidebar__item ${filters.series.includes(s) ? "sidebar__item--active" : ""}`}
-                  onClick={() => applyFilter("series", s)}
+                  class={`sidebar__item ${filters.series === s ? "sidebar__item--active" : ""}`}
+                  onClick={() => applyStringFilter("series", s)}
                 >
                   {s}
                 </div>

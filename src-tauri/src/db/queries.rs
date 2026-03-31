@@ -225,42 +225,68 @@ pub fn get_game(conn: &Connection, id: i64) -> rusqlite::Result<Game> {
     )
 }
 
-pub fn get_filter_options(conn: &Connection, content_type: &str) -> rusqlite::Result<FilterOptions> {
-    let ct_clause = if content_type.is_empty() {
+/// Build a WHERE clause from all active filters, optionally excluding one category
+/// so that category's options aren't limited by its own selection.
+fn build_option_filter(
+    content_type: &str,
+    genre: &str,
+    developer: &str,
+    publisher: &str,
+    year: Option<i32>,
+    series: &str,
+    platform: &str,
+    favorites_only: bool,
+    exclude: &str,
+) -> String {
+    let mut clauses: Vec<String> = Vec::new();
+
+    if !content_type.is_empty() && exclude != "content_type" {
+        clauses.push(format!(
+            "content_type = '{}'",
+            content_type.replace('\'', "''")
+        ));
+    }
+    if !genre.is_empty() && exclude != "genre" {
+        clauses.push(format!("genre LIKE '%{}%'", genre.replace('\'', "''")));
+    }
+    if !developer.is_empty() && exclude != "developer" {
+        clauses.push(format!(
+            "developer = '{}'",
+            developer.replace('\'', "''")
+        ));
+    }
+    if !publisher.is_empty() && exclude != "publisher" {
+        clauses.push(format!(
+            "publisher = '{}'",
+            publisher.replace('\'', "''")
+        ));
+    }
+    if let Some(y) = year {
+        if exclude != "year" {
+            clauses.push(format!("release_year = {}", y));
+        }
+    }
+    if !series.is_empty() && exclude != "series" {
+        clauses.push(format!("series = '{}'", series.replace('\'', "''")));
+    }
+    if !platform.is_empty() && exclude != "platform" {
+        clauses.push(format!(
+            "platform = '{}'",
+            platform.replace('\'', "''")
+        ));
+    }
+    if favorites_only {
+        clauses.push("favorite = 1".to_string());
+    }
+
+    if clauses.is_empty() {
         String::new()
     } else {
-        format!("WHERE content_type = '{}'", content_type.replace('\'', "''"))
-    };
-
-    let genres = get_distinct_values(conn, "genre", &ct_clause)?;
-    let developers = get_distinct_values(conn, "developer", &ct_clause)?;
-    let publishers = get_distinct_values(conn, "publisher", &ct_clause)?;
-    let series = get_distinct_values(conn, "series", &ct_clause)?;
-    let platforms = get_distinct_values(conn, "platform", &ct_clause)?;
-
-    let year_sql = if ct_clause.is_empty() {
-        "SELECT DISTINCT release_year FROM games WHERE release_year IS NOT NULL ORDER BY release_year".to_string()
-    } else {
-        format!(
-            "SELECT DISTINCT release_year FROM games {} AND release_year IS NOT NULL ORDER BY release_year",
-            ct_clause
-        )
-    };
-    let mut year_stmt = conn.prepare(&year_sql)?;
-    let years: Vec<i32> = year_stmt
-        .query_map([], |row| row.get::<_, i32>(0))?
-        .collect::<rusqlite::Result<Vec<_>>>()?;
-
-    Ok(FilterOptions {
-        genres,
-        developers,
-        publishers,
-        years,
-        series,
-        platforms,
-    })
+        format!("WHERE {}", clauses.join(" AND "))
+    }
 }
 
+/// Fetch distinct values for a column, filtered by a WHERE clause.
 fn get_distinct_values(
     conn: &Connection,
     column: &str,
@@ -282,4 +308,73 @@ fn get_distinct_values(
         .query_map([], |row| row.get::<_, String>(0))?
         .collect::<rusqlite::Result<Vec<_>>>()?;
     Ok(values)
+}
+
+/// Return available filter options. Each category is filtered by all OTHER active
+/// filters so the user sees only values that would produce results.
+/// Content types are always unfiltered so the user can always switch category.
+pub fn get_filter_options(
+    conn: &Connection,
+    content_type: &str,
+    genre: &str,
+    developer: &str,
+    publisher: &str,
+    year: Option<i32>,
+    series: &str,
+    platform: &str,
+    favorites_only: bool,
+) -> rusqlite::Result<FilterOptions> {
+    // Content types: always show all available (unfiltered)
+    let content_types = get_distinct_values(conn, "content_type", "")?;
+
+    // Each category excludes itself so you can still switch within that category
+    let genre_where = build_option_filter(
+        content_type, genre, developer, publisher, year, series, platform, favorites_only, "genre",
+    );
+    let dev_where = build_option_filter(
+        content_type, genre, developer, publisher, year, series, platform, favorites_only, "developer",
+    );
+    let pub_where = build_option_filter(
+        content_type, genre, developer, publisher, year, series, platform, favorites_only, "publisher",
+    );
+    let year_where = build_option_filter(
+        content_type, genre, developer, publisher, year, series, platform, favorites_only, "year",
+    );
+    let series_where = build_option_filter(
+        content_type, genre, developer, publisher, year, series, platform, favorites_only, "series",
+    );
+    let platform_where = build_option_filter(
+        content_type, genre, developer, publisher, year, series, platform, favorites_only, "platform",
+    );
+
+    let genres = get_distinct_values(conn, "genre", &genre_where)?;
+    let developers = get_distinct_values(conn, "developer", &dev_where)?;
+    let publishers = get_distinct_values(conn, "publisher", &pub_where)?;
+    let series_vals = get_distinct_values(conn, "series", &series_where)?;
+    let platforms = get_distinct_values(conn, "platform", &platform_where)?;
+
+    // Years need special handling (integer column)
+    let year_sql = if year_where.is_empty() {
+        "SELECT DISTINCT release_year FROM games WHERE release_year IS NOT NULL ORDER BY release_year"
+            .to_string()
+    } else {
+        format!(
+            "SELECT DISTINCT release_year FROM games {} AND release_year IS NOT NULL ORDER BY release_year",
+            year_where
+        )
+    };
+    let mut year_stmt = conn.prepare(&year_sql)?;
+    let years: Vec<i32> = year_stmt
+        .query_map([], |row| row.get::<_, i32>(0))?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+
+    Ok(FilterOptions {
+        content_types,
+        genres,
+        developers,
+        publishers,
+        years,
+        series: series_vals,
+        platforms,
+    })
 }

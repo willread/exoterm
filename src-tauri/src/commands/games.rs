@@ -58,9 +58,27 @@ pub fn get_game(state: State<AppState>, id: i64) -> Result<Game, String> {
 pub fn get_filter_options(
     state: State<AppState>,
     content_type: Option<String>,
+    genre: Option<String>,
+    developer: Option<String>,
+    publisher: Option<String>,
+    year: Option<i32>,
+    series: Option<String>,
+    platform: Option<String>,
+    favorites_only: Option<bool>,
 ) -> Result<FilterOptions, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
-    queries::get_filter_options(&db, &content_type.unwrap_or_default()).map_err(|e| e.to_string())
+    queries::get_filter_options(
+        &db,
+        &content_type.unwrap_or_default(),
+        &genre.unwrap_or_default(),
+        &developer.unwrap_or_default(),
+        &publisher.unwrap_or_default(),
+        year,
+        &series.unwrap_or_default(),
+        &platform.unwrap_or_default(),
+        favorites_only.unwrap_or(false),
+    )
+    .map_err(|e| e.to_string())
 }
 
 /// Image category priority: box art first, then screenshots

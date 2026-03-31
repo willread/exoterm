@@ -39,6 +39,7 @@ export interface SearchResult {
 }
 
 export interface FilterOptions {
+  content_types: string[];
   genres: string[];
   developers: string[];
   publishers: string[];

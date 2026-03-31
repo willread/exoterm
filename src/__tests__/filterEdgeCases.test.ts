@@ -1,7 +1,6 @@
 /**
- * Tests for fetchGames parameter mapping not covered in store.test.ts:
- * developer, publisher, series, platform filters; all content types;
- * combined multiple active filters.
+ * Tests for fetchGames parameter mapping: single-select filters,
+ * all content types, combined filter scenarios.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
@@ -31,12 +30,12 @@ beforeEach(() => {
   setTotalCount(0);
   setSearchQuery("");
   setFilters("contentType", "Game");
-  setFilters("genre", []);
-  setFilters("developer", []);
-  setFilters("publisher", []);
-  setFilters("year", []);
-  setFilters("series", []);
-  setFilters("platform", []);
+  setFilters("genre", "");
+  setFilters("developer", "");
+  setFilters("publisher", "");
+  setFilters("year", null);
+  setFilters("series", "");
+  setFilters("platform", "");
   setFilters("favoritesOnly", false);
   setFilters("sortBy", "title");
   setFilters("sortDir", "asc");
@@ -44,63 +43,51 @@ beforeEach(() => {
   setFilters("limit", 50000);
 });
 
-describe("remaining filter params passed to search_games", () => {
-  it("passes developer filter array when set", async () => {
-    setFilters("developer", ["id Software"]);
+describe("single-select filter params passed to search_games", () => {
+  it("passes developer as single-element array when set", async () => {
+    setFilters("developer", "id Software");
     await fetchGames();
     expect(getSearchCall().developer).toEqual(["id Software"]);
   });
 
-  it("passes multiple developers as array", async () => {
-    setFilters("developer", ["id Software", "Apogee"]);
-    await fetchGames();
-    expect(getSearchCall().developer).toEqual(["id Software", "Apogee"]);
-  });
-
-  it("omits developer when array is empty", async () => {
-    setFilters("developer", []);
+  it("omits developer when empty", async () => {
+    setFilters("developer", "");
     await fetchGames();
     expect(getSearchCall().developer).toBeUndefined();
   });
 
-  it("passes publisher filter array when set", async () => {
-    setFilters("publisher", ["GT Interactive"]);
+  it("passes publisher as single-element array when set", async () => {
+    setFilters("publisher", "GT Interactive");
     await fetchGames();
     expect(getSearchCall().publisher).toEqual(["GT Interactive"]);
   });
 
-  it("omits publisher when array is empty", async () => {
-    setFilters("publisher", []);
+  it("omits publisher when empty", async () => {
+    setFilters("publisher", "");
     await fetchGames();
     expect(getSearchCall().publisher).toBeUndefined();
   });
 
-  it("passes series filter array when set", async () => {
-    setFilters("series", ["Doom"]);
+  it("passes series as single-element array when set", async () => {
+    setFilters("series", "Doom");
     await fetchGames();
     expect(getSearchCall().series).toEqual(["Doom"]);
   });
 
-  it("omits series when array is empty", async () => {
-    setFilters("series", []);
+  it("omits series when empty", async () => {
+    setFilters("series", "");
     await fetchGames();
     expect(getSearchCall().series).toBeUndefined();
   });
 
-  it("passes platform filter array when set", async () => {
-    setFilters("platform", ["MS-DOS"]);
+  it("passes platform as single-element array when set", async () => {
+    setFilters("platform", "MS-DOS");
     await fetchGames();
     expect(getSearchCall().platform).toEqual(["MS-DOS"]);
   });
 
-  it("passes multiple platforms as array", async () => {
-    setFilters("platform", ["MS-DOS", "Windows 3.x"]);
-    await fetchGames();
-    expect(getSearchCall().platform).toEqual(["MS-DOS", "Windows 3.x"]);
-  });
-
-  it("omits platform when array is empty", async () => {
-    setFilters("platform", []);
+  it("omits platform when empty", async () => {
+    setFilters("platform", "");
     await fetchGames();
     expect(getSearchCall().platform).toBeUndefined();
   });
@@ -128,12 +115,12 @@ describe("combined filter scenarios", () => {
   it("sends all active filters simultaneously", async () => {
     setSearchQuery("doom");
     setFilters("contentType", "Game");
-    setFilters("genre", ["Action"]);
-    setFilters("developer", ["id Software"]);
-    setFilters("publisher", ["GT Interactive"]);
-    setFilters("year", [1993]);
-    setFilters("series", ["Doom"]);
-    setFilters("platform", ["MS-DOS"]);
+    setFilters("genre", "Action");
+    setFilters("developer", "id Software");
+    setFilters("publisher", "GT Interactive");
+    setFilters("year", 1993);
+    setFilters("series", "Doom");
+    setFilters("platform", "MS-DOS");
     setFilters("favoritesOnly", true);
     setFilters("sortBy", "year");
     setFilters("sortDir", "desc");
@@ -158,15 +145,14 @@ describe("combined filter scenarios", () => {
     expect(params.limit).toBe(20);
   });
 
-  it("favorites + multi-genre filter omits empty fields", async () => {
-    setFilters("genre", ["RPG", "Action"]);
+  it("favorites + genre filter omits empty fields", async () => {
+    setFilters("genre", "RPG");
     setFilters("favoritesOnly", true);
-    // All other optional filters left as empty arrays
 
     await fetchGames();
 
     const params = getSearchCall();
-    expect(params.genre).toEqual(["RPG", "Action"]);
+    expect(params.genre).toEqual(["RPG"]);
     expect(params.favorites_only).toBe(true);
     expect(params.developer).toBeUndefined();
     expect(params.publisher).toBeUndefined();
@@ -176,23 +162,22 @@ describe("combined filter scenarios", () => {
     expect(params.query).toBeUndefined();
   });
 
-  it("search query + content type + multi-platform filter combined", async () => {
+  it("search query + content type + platform filter combined", async () => {
     setSearchQuery("wolf");
     setFilters("contentType", "Game");
-    setFilters("platform", ["MS-DOS", "Windows 3.x"]);
+    setFilters("platform", "MS-DOS");
 
     await fetchGames();
 
     const params = getSearchCall();
     expect(params.query).toBe("wolf");
     expect(params.content_type).toBe("Game");
-    expect(params.platform).toEqual(["MS-DOS", "Windows 3.x"]);
+    expect(params.platform).toEqual(["MS-DOS"]);
   });
 });
 
 describe("search query edge cases", () => {
   it("trims leading/trailing spaces as-is (passes raw value to backend)", async () => {
-    // The frontend passes the value as typed — FTS handling is backend's job
     setSearchQuery("  doom  ");
     await fetchGames();
     expect(getSearchCall().query).toBe("  doom  ");
@@ -211,7 +196,6 @@ describe("search query edge cases", () => {
   });
 
   it("passes query with special characters through", async () => {
-    // FTS escaping is the backend's responsibility; frontend sends raw text
     setSearchQuery('wolf"stein');
     await fetchGames();
     expect(getSearchCall().query).toBe('wolf"stein');

@@ -257,7 +257,7 @@ fn test_toggle_favorite() {
 #[test]
 fn test_get_filter_options() {
     let conn = make_db_with_games();
-    let opts = queries::get_filter_options(&conn, "Game").unwrap();
+    let opts = queries::get_filter_options(&conn, "Game", "", "", "", None, "", "", false).unwrap();
     assert!(opts.developers.contains(&"id Software".to_string()));
     assert!(opts.developers.contains(&"Maxis".to_string()));
     assert!(opts.years.contains(&1993));
@@ -265,4 +265,33 @@ fn test_get_filter_options() {
     assert!(!opts.years.contains(&1994), "Magazine year should not appear in Game filter");
     assert!(opts.genres.contains(&"Action".to_string()));
     assert!(opts.genres.contains(&"Strategy".to_string()));
+    // Content types always returned unfiltered
+    assert!(opts.content_types.contains(&"Game".to_string()));
+    assert!(opts.content_types.contains(&"Magazine".to_string()));
+}
+
+#[test]
+fn test_filter_options_cascade_by_genre() {
+    let conn = make_db_with_games();
+    // When genre=Strategy is active, only Maxis should appear in developers
+    let opts = queries::get_filter_options(&conn, "Game", "Strategy", "", "", None, "", "", false).unwrap();
+    assert!(opts.developers.contains(&"Maxis".to_string()));
+    assert!(!opts.developers.contains(&"id Software".to_string()));
+    // Years should only include 1989 (Sim City)
+    assert_eq!(opts.years, vec![1989]);
+    // But genre list should still show all Game genres (excludes its own filter)
+    assert!(opts.genres.contains(&"Action".to_string()));
+    assert!(opts.genres.contains(&"Strategy".to_string()));
+}
+
+#[test]
+fn test_filter_options_cascade_by_developer() {
+    let conn = make_db_with_games();
+    // When developer=Maxis, only Strategy genre should appear
+    let opts = queries::get_filter_options(&conn, "Game", "", "Maxis", "", None, "", "", false).unwrap();
+    assert!(opts.genres.contains(&"Strategy".to_string()));
+    assert!(!opts.genres.contains(&"Action".to_string()));
+    // Developer list still shows all options (excludes its own filter)
+    assert!(opts.developers.contains(&"id Software".to_string()));
+    assert!(opts.developers.contains(&"Maxis".to_string()));
 }

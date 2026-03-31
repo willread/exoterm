@@ -24,13 +24,14 @@ A DOS-style alternate frontend for eXo collections (eXoDOS, eXoWin9x, etc.) buil
 - Database stored in `%APPDATA%/exo-terminal/exo_terminal.db`
 
 ### Filter Panel Design
-- **No content-type tabs** — sidebar shows filter sections only
+- **Content type selector** at top of sidebar: shows all available types (Game, Magazine, Book, Soundtrack, Video, Catalog) plus "All"; click to filter
+- **Favorites toggle**: clickable header to filter to favorites only
+- **Single-select filters**: each category (Platform, Genre, Year, Developer, Publisher, Series) allows one selection; click again to deselect
+- **Cascading filter options**: `get_filter_options` accepts all active filters; each category's available values are filtered by all OTHER active categories (so selecting a genre narrows the year/developer/etc. lists to only those with matching games)
 - **Collapsible sections**: Platform starts expanded; Genre, Year, Developer, Publisher, Series start collapsed
-- **Multi-select**: each category allows selecting multiple values (OR semantics); arrays passed to backend
-- **Header label format**: "Category" when empty, "Category: val1, val2" when selections exist
+- **Header label format**: "Category" when empty, "Category: value" when a selection exists
 - **Genre nesting**: genres containing " / " separator are grouped under their parent with collapsible sub-groups
-- **Reset Filters button**: appears at top of sidebar whenever any filter array is non-empty or favoritesOnly is true
-- **No LIMIT** on filter option queries — all distinct values shown in alphabetical order
+- **Reset Filters button**: clears all category filters and favoritesOnly
 - **Sidebar scrolls as whole** — block layout, no sub-section overflow
 
 ### Favorites

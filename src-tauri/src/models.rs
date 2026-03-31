@@ -45,6 +45,7 @@ pub struct SearchResult {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FilterOptions {
+    pub content_types: Vec<String>,
     pub genres: Vec<String>,
     pub developers: Vec<String>,
     pub publishers: Vec<String>,

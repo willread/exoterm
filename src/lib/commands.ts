@@ -29,10 +29,17 @@ export async function getGame(id: number): Promise<Game> {
   return invoke("get_game", { id });
 }
 
-export async function getFilterOptions(
-  contentType?: string
-): Promise<FilterOptions> {
-  return invoke("get_filter_options", { content_type: contentType });
+export async function getFilterOptions(params: {
+  content_type?: string;
+  genre?: string;
+  developer?: string;
+  publisher?: string;
+  year?: number;
+  series?: string;
+  platform?: string;
+  favorites_only?: boolean;
+}): Promise<FilterOptions> {
+  return invoke("get_filter_options", params);
 }
 
 export interface GameImage {

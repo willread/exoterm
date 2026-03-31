@@ -190,6 +190,15 @@ body {
   color: var(--fg-highlight);
 }
 
+.sidebar__section-header--top {
+  cursor: default;
+}
+
+.sidebar__section-header--active {
+  background: var(--bg-highlight);
+  color: var(--fg-highlight);
+}
+
 .sidebar__section-arrow {
   /* Same size as game-list column header sort arrows */
 }

@@ -42,12 +42,12 @@ beforeEach(() => {
   setSelectedIndex(0);
   setSearchQuery("");
   setFilters("contentType", "Game");
-  setFilters("genre", []);
-  setFilters("developer", []);
-  setFilters("publisher", []);
-  setFilters("year", []);
-  setFilters("series", []);
-  setFilters("platform", []);
+  setFilters("genre", "");
+  setFilters("developer", "");
+  setFilters("publisher", "");
+  setFilters("year", null);
+  setFilters("series", "");
+  setFilters("platform", "");
   setFilters("sortBy", "title");
   setFilters("sortDir", "asc");
   setFilters("offset", 0);

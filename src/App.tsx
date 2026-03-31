@@ -23,6 +23,7 @@ import {
   setSearchQuery,
   gameChoice,
   setGameChoice,
+  fetchGames,
 } from "./lib/store";
 import { initKeyboardHandler, registerKey, guardedLaunch } from "./lib/keyboard";
 import { launchGame, toggleFavorite, sendGameInput } from "./lib/commands";

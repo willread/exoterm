@@ -30,22 +30,20 @@ function makeGame(overrides = {}) {
 
 beforeEach(() => {
   mockInvoke.mockReset();
-  // Default mock: return empty list for search_games, null for everything else
   mockInvoke.mockImplementation(async (cmd) => {
     if (cmd === "search_games") return { games: [], total_count: 0 };
     return null;
   });
-  // Reset store state to defaults
   setGameList([]);
   setTotalCount(0);
   setSearchQuery("");
   setFilters("contentType", "Game");
-  setFilters("genre", []);
-  setFilters("developer", []);
-  setFilters("publisher", []);
-  setFilters("year", []);
-  setFilters("series", []);
-  setFilters("platform", []);
+  setFilters("genre", "");
+  setFilters("developer", "");
+  setFilters("publisher", "");
+  setFilters("year", null);
+  setFilters("series", "");
+  setFilters("platform", "");
   setFilters("favoritesOnly", false);
   setFilters("sortBy", "title");
   setFilters("sortDir", "asc");
@@ -71,10 +69,6 @@ describe("fetchGames", () => {
 
   it("passes search query to search_games when set", async () => {
     setSearchQuery("wolf");
-    mockInvoke.mockImplementation(async (cmd, params: any) => {
-      if (cmd === "search_games") return { games: [], total_count: 0 };
-      return null;
-    });
 
     await fetchGames();
 
@@ -101,8 +95,8 @@ describe("fetchGames", () => {
     expect((call![1] as any).content_type).toBe("Magazine");
   });
 
-  it("passes genre filter array when set", async () => {
-    setFilters("genre", ["Action"]);
+  it("passes genre as single-element array when set", async () => {
+    setFilters("genre", "Action");
 
     await fetchGames();
 
@@ -110,17 +104,8 @@ describe("fetchGames", () => {
     expect((call![1] as any).genre).toEqual(["Action"]);
   });
 
-  it("passes multiple genres as array", async () => {
-    setFilters("genre", ["Action", "RPG"]);
-
-    await fetchGames();
-
-    const call = mockInvoke.mock.calls.find(([cmd]) => cmd === "search_games");
-    expect((call![1] as any).genre).toEqual(["Action", "RPG"]);
-  });
-
-  it("omits genre when array is empty", async () => {
-    setFilters("genre", []);
+  it("omits genre when empty", async () => {
+    setFilters("genre", "");
 
     await fetchGames();
 
@@ -128,8 +113,8 @@ describe("fetchGames", () => {
     expect((call![1] as any).genre).toBeUndefined();
   });
 
-  it("passes year filter array when set", async () => {
-    setFilters("year", [1993]);
+  it("passes year as single-element array when set", async () => {
+    setFilters("year", 1993);
 
     await fetchGames();
 
@@ -137,8 +122,8 @@ describe("fetchGames", () => {
     expect((call![1] as any).year).toEqual([1993]);
   });
 
-  it("omits year when array is empty", async () => {
-    setFilters("year", []);
+  it("omits year when null", async () => {
+    setFilters("year", null);
 
     await fetchGames();
 
@@ -192,7 +177,6 @@ describe("fetchGames", () => {
       return null;
     });
 
-    // Should not throw — error is caught internally
     await expect(fetchGames()).resolves.toBeUndefined();
   });
 
@@ -206,12 +190,10 @@ describe("fetchGames", () => {
 
     await fetchGames();
 
-    // Stale state is preserved — user sees last good result
     expect(gameList()).toHaveLength(1);
   });
 
   it("discards results from an earlier request when a newer one completes first", async () => {
-    // Simulate a slow first call that completes after a fast second call.
     let resolveFirst!: (v: unknown) => void;
     let callCount = 0;
 
@@ -219,26 +201,20 @@ describe("fetchGames", () => {
       if (cmd === "search_games") {
         callCount++;
         if (callCount === 1) {
-          // First call blocks until we manually resolve it.
           await new Promise((resolve) => { resolveFirst = resolve; });
           return { games: [makeGame({ id: 999, title: "Stale" })], total_count: 1 };
         }
-        // Second call returns immediately.
         return { games: [makeGame({ id: 1, title: "Fresh" })], total_count: 1 };
       }
       return null;
     });
 
-    // Start the slow first call (do not await yet).
     const p1 = fetchGames();
-    // Start and await the fast second call.
     await fetchGames();
 
-    // Now unblock the first (stale) call.
     resolveFirst(undefined);
     await p1;
 
-    // The stale result must have been discarded; only "Fresh" should be visible.
     expect(gameList()).toHaveLength(1);
     expect(gameList()[0].title).toBe("Fresh");
   });

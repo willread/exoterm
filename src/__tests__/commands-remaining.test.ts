@@ -18,8 +18,9 @@ beforeEach(() => {
 });
 
 describe("getFilterOptions", () => {
-  it("calls invoke with get_filter_options and content_type", async () => {
+  it("calls invoke with get_filter_options and all filter params", async () => {
     mockInvoke.mockResolvedValueOnce({
+      content_types: ["Game"],
       genres: ["Action", "RPG"],
       developers: [],
       publishers: [],
@@ -27,14 +28,16 @@ describe("getFilterOptions", () => {
       series: [],
       platforms: [],
     });
-    await getFilterOptions("Game");
+    await getFilterOptions({ content_type: "Game", genre: "Action" });
     expect(mockInvoke).toHaveBeenCalledWith("get_filter_options", {
       content_type: "Game",
+      genre: "Action",
     });
   });
 
-  it("passes undefined content_type when not provided", async () => {
+  it("passes empty params object when no filters set", async () => {
     mockInvoke.mockResolvedValueOnce({
+      content_types: [],
       genres: [],
       developers: [],
       publishers: [],
@@ -42,14 +45,13 @@ describe("getFilterOptions", () => {
       series: [],
       platforms: [],
     });
-    await getFilterOptions();
-    expect(mockInvoke).toHaveBeenCalledWith("get_filter_options", {
-      content_type: undefined,
-    });
+    await getFilterOptions({});
+    expect(mockInvoke).toHaveBeenCalledWith("get_filter_options", {});
   });
 
   it("returns filter options from backend", async () => {
     const mockOptions = {
+      content_types: ["Game", "Magazine"],
       genres: ["Action", "RPG", "Puzzle"],
       developers: ["id Software", "Apogee"],
       publishers: ["GT Interactive"],
@@ -58,9 +60,10 @@ describe("getFilterOptions", () => {
       platforms: ["MS-DOS"],
     };
     mockInvoke.mockResolvedValueOnce(mockOptions);
-    const result = await getFilterOptions("Game");
+    const result = await getFilterOptions({ content_type: "Game" });
     expect(result.genres).toEqual(["Action", "RPG", "Puzzle"]);
     expect(result.years).toEqual([1992, 1993, 1994]);
+    expect(result.content_types).toEqual(["Game", "Magazine"]);
   });
 });
 
