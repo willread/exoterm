@@ -5,7 +5,7 @@ use crate::db::queries;
 use crate::models::{FilterOptions, Game, GameImage, SearchResult};
 use crate::state::AppState;
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn search_games(
     state: State<AppState>,
     query: Option<String>,
@@ -54,7 +54,7 @@ pub fn get_game(state: State<AppState>, id: i64) -> Result<Game, String> {
     queries::get_game(&db, id).map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn get_filter_options(
     state: State<AppState>,
     content_type: Option<String>,
