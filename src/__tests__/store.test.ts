@@ -40,12 +40,12 @@ beforeEach(() => {
   setTotalCount(0);
   setSearchQuery("");
   setFilters("contentType", "Game");
-  setFilters("genre", null);
-  setFilters("developer", null);
-  setFilters("publisher", null);
-  setFilters("year", null);
-  setFilters("series", null);
-  setFilters("platform", null);
+  setFilters("genre", []);
+  setFilters("developer", []);
+  setFilters("publisher", []);
+  setFilters("year", []);
+  setFilters("series", []);
+  setFilters("platform", []);
   setFilters("favoritesOnly", false);
   setFilters("sortBy", "title");
   setFilters("sortDir", "asc");
@@ -101,26 +101,44 @@ describe("fetchGames", () => {
     expect((call![1] as any).content_type).toBe("Magazine");
   });
 
-  it("passes genre filter when set", async () => {
-    setFilters("genre", "Action");
+  it("passes genre filter array when set", async () => {
+    setFilters("genre", ["Action"]);
 
     await fetchGames();
 
     const call = mockInvoke.mock.calls.find(([cmd]) => cmd === "search_games");
-    expect((call![1] as any).genre).toBe("Action");
+    expect((call![1] as any).genre).toEqual(["Action"]);
   });
 
-  it("passes year filter when set", async () => {
-    setFilters("year", 1993);
+  it("passes multiple genres as array", async () => {
+    setFilters("genre", ["Action", "RPG"]);
 
     await fetchGames();
 
     const call = mockInvoke.mock.calls.find(([cmd]) => cmd === "search_games");
-    expect((call![1] as any).year).toBe(1993);
+    expect((call![1] as any).genre).toEqual(["Action", "RPG"]);
   });
 
-  it("omits year when null", async () => {
-    setFilters("year", null);
+  it("omits genre when array is empty", async () => {
+    setFilters("genre", []);
+
+    await fetchGames();
+
+    const call = mockInvoke.mock.calls.find(([cmd]) => cmd === "search_games");
+    expect((call![1] as any).genre).toBeUndefined();
+  });
+
+  it("passes year filter array when set", async () => {
+    setFilters("year", [1993]);
+
+    await fetchGames();
+
+    const call = mockInvoke.mock.calls.find(([cmd]) => cmd === "search_games");
+    expect((call![1] as any).year).toEqual([1993]);
+  });
+
+  it("omits year when array is empty", async () => {
+    setFilters("year", []);
 
     await fetchGames();
 

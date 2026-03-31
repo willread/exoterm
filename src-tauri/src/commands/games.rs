@@ -10,12 +10,12 @@ pub fn search_games(
     state: State<AppState>,
     query: Option<String>,
     content_type: Option<String>,
-    genre: Option<String>,
-    developer: Option<String>,
-    publisher: Option<String>,
-    year: Option<i32>,
-    series: Option<String>,
-    platform: Option<String>,
+    genre: Option<Vec<String>>,
+    developer: Option<Vec<String>>,
+    publisher: Option<Vec<String>>,
+    year: Option<Vec<i32>>,
+    series: Option<Vec<String>>,
+    platform: Option<Vec<String>>,
     favorites_only: Option<bool>,
     sort_by: Option<String>,
     sort_dir: Option<String>,
@@ -23,16 +23,22 @@ pub fn search_games(
     limit: Option<i64>,
 ) -> Result<SearchResult, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
+    let genres = genre.unwrap_or_default();
+    let developers = developer.unwrap_or_default();
+    let publishers = publisher.unwrap_or_default();
+    let years = year.unwrap_or_default();
+    let series_list = series.unwrap_or_default();
+    let platforms = platform.unwrap_or_default();
     queries::search_games(
         &db,
         &query.unwrap_or_default(),
         &content_type.unwrap_or_default(),
-        genre.as_deref(),
-        developer.as_deref(),
-        publisher.as_deref(),
-        year,
-        series.as_deref(),
-        platform.as_deref(),
+        &genres,
+        &developers,
+        &publishers,
+        &years,
+        &series_list,
+        &platforms,
         favorites_only.unwrap_or(false),
         &sort_by.unwrap_or_else(|| "title".to_string()),
         &sort_dir.unwrap_or_else(|| "asc".to_string()),

@@ -10,12 +10,12 @@ import type {
 export async function searchGames(params: {
   query?: string;
   content_type?: string;
-  genre?: string;
-  developer?: string;
-  publisher?: string;
-  year?: number;
-  series?: string;
-  platform?: string;
+  genre?: string[];
+  developer?: string[];
+  publisher?: string[];
+  year?: number[];
+  series?: string[];
+  platform?: string[];
   favorites_only?: boolean;
   sort_by?: string;
   sort_dir?: string;

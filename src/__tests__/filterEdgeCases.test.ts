@@ -31,12 +31,12 @@ beforeEach(() => {
   setTotalCount(0);
   setSearchQuery("");
   setFilters("contentType", "Game");
-  setFilters("genre", null);
-  setFilters("developer", null);
-  setFilters("publisher", null);
-  setFilters("year", null);
-  setFilters("series", null);
-  setFilters("platform", null);
+  setFilters("genre", []);
+  setFilters("developer", []);
+  setFilters("publisher", []);
+  setFilters("year", []);
+  setFilters("series", []);
+  setFilters("platform", []);
   setFilters("favoritesOnly", false);
   setFilters("sortBy", "title");
   setFilters("sortDir", "asc");
@@ -45,50 +45,62 @@ beforeEach(() => {
 });
 
 describe("remaining filter params passed to search_games", () => {
-  it("passes developer filter when set", async () => {
-    setFilters("developer", "id Software");
+  it("passes developer filter array when set", async () => {
+    setFilters("developer", ["id Software"]);
     await fetchGames();
-    expect(getSearchCall().developer).toBe("id Software");
+    expect(getSearchCall().developer).toEqual(["id Software"]);
   });
 
-  it("omits developer when null", async () => {
-    setFilters("developer", null);
+  it("passes multiple developers as array", async () => {
+    setFilters("developer", ["id Software", "Apogee"]);
+    await fetchGames();
+    expect(getSearchCall().developer).toEqual(["id Software", "Apogee"]);
+  });
+
+  it("omits developer when array is empty", async () => {
+    setFilters("developer", []);
     await fetchGames();
     expect(getSearchCall().developer).toBeUndefined();
   });
 
-  it("passes publisher filter when set", async () => {
-    setFilters("publisher", "GT Interactive");
+  it("passes publisher filter array when set", async () => {
+    setFilters("publisher", ["GT Interactive"]);
     await fetchGames();
-    expect(getSearchCall().publisher).toBe("GT Interactive");
+    expect(getSearchCall().publisher).toEqual(["GT Interactive"]);
   });
 
-  it("omits publisher when null", async () => {
-    setFilters("publisher", null);
+  it("omits publisher when array is empty", async () => {
+    setFilters("publisher", []);
     await fetchGames();
     expect(getSearchCall().publisher).toBeUndefined();
   });
 
-  it("passes series filter when set", async () => {
-    setFilters("series", "Doom");
+  it("passes series filter array when set", async () => {
+    setFilters("series", ["Doom"]);
     await fetchGames();
-    expect(getSearchCall().series).toBe("Doom");
+    expect(getSearchCall().series).toEqual(["Doom"]);
   });
 
-  it("omits series when null", async () => {
-    setFilters("series", null);
+  it("omits series when array is empty", async () => {
+    setFilters("series", []);
     await fetchGames();
     expect(getSearchCall().series).toBeUndefined();
   });
 
-  it("passes platform filter when set", async () => {
-    setFilters("platform", "MS-DOS");
+  it("passes platform filter array when set", async () => {
+    setFilters("platform", ["MS-DOS"]);
     await fetchGames();
-    expect(getSearchCall().platform).toBe("MS-DOS");
+    expect(getSearchCall().platform).toEqual(["MS-DOS"]);
   });
 
-  it("omits platform when null", async () => {
-    setFilters("platform", null);
+  it("passes multiple platforms as array", async () => {
+    setFilters("platform", ["MS-DOS", "Windows 3.x"]);
+    await fetchGames();
+    expect(getSearchCall().platform).toEqual(["MS-DOS", "Windows 3.x"]);
+  });
+
+  it("omits platform when array is empty", async () => {
+    setFilters("platform", []);
     await fetchGames();
     expect(getSearchCall().platform).toBeUndefined();
   });
@@ -116,12 +128,12 @@ describe("combined filter scenarios", () => {
   it("sends all active filters simultaneously", async () => {
     setSearchQuery("doom");
     setFilters("contentType", "Game");
-    setFilters("genre", "Action");
-    setFilters("developer", "id Software");
-    setFilters("publisher", "GT Interactive");
-    setFilters("year", 1993);
-    setFilters("series", "Doom");
-    setFilters("platform", "MS-DOS");
+    setFilters("genre", ["Action"]);
+    setFilters("developer", ["id Software"]);
+    setFilters("publisher", ["GT Interactive"]);
+    setFilters("year", [1993]);
+    setFilters("series", ["Doom"]);
+    setFilters("platform", ["MS-DOS"]);
     setFilters("favoritesOnly", true);
     setFilters("sortBy", "year");
     setFilters("sortDir", "desc");
@@ -133,12 +145,12 @@ describe("combined filter scenarios", () => {
     const params = getSearchCall();
     expect(params.query).toBe("doom");
     expect(params.content_type).toBe("Game");
-    expect(params.genre).toBe("Action");
-    expect(params.developer).toBe("id Software");
-    expect(params.publisher).toBe("GT Interactive");
-    expect(params.year).toBe(1993);
-    expect(params.series).toBe("Doom");
-    expect(params.platform).toBe("MS-DOS");
+    expect(params.genre).toEqual(["Action"]);
+    expect(params.developer).toEqual(["id Software"]);
+    expect(params.publisher).toEqual(["GT Interactive"]);
+    expect(params.year).toEqual([1993]);
+    expect(params.series).toEqual(["Doom"]);
+    expect(params.platform).toEqual(["MS-DOS"]);
     expect(params.favorites_only).toBe(true);
     expect(params.sort_by).toBe("year");
     expect(params.sort_dir).toBe("desc");
@@ -146,15 +158,15 @@ describe("combined filter scenarios", () => {
     expect(params.limit).toBe(20);
   });
 
-  it("favorites + genre filter omits null fields", async () => {
-    setFilters("genre", "RPG");
+  it("favorites + multi-genre filter omits empty fields", async () => {
+    setFilters("genre", ["RPG", "Action"]);
     setFilters("favoritesOnly", true);
-    // All other optional filters left as null
+    // All other optional filters left as empty arrays
 
     await fetchGames();
 
     const params = getSearchCall();
-    expect(params.genre).toBe("RPG");
+    expect(params.genre).toEqual(["RPG", "Action"]);
     expect(params.favorites_only).toBe(true);
     expect(params.developer).toBeUndefined();
     expect(params.publisher).toBeUndefined();
@@ -164,17 +176,17 @@ describe("combined filter scenarios", () => {
     expect(params.query).toBeUndefined();
   });
 
-  it("search query + content type + platform filter combined", async () => {
+  it("search query + content type + multi-platform filter combined", async () => {
     setSearchQuery("wolf");
     setFilters("contentType", "Game");
-    setFilters("platform", "MS-DOS");
+    setFilters("platform", ["MS-DOS", "Windows 3.x"]);
 
     await fetchGames();
 
     const params = getSearchCall();
     expect(params.query).toBe("wolf");
     expect(params.content_type).toBe("Game");
-    expect(params.platform).toBe("MS-DOS");
+    expect(params.platform).toEqual(["MS-DOS", "Windows 3.x"]);
   });
 });
 

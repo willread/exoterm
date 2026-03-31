@@ -22,6 +22,16 @@ A DOS-style alternate frontend for eXo collections (eXoDOS, eXoWin9x, etc.) buil
 - Content types detected from platform XML filename: Game, Magazine, Book, Soundtrack, Video, Catalog
 - Database stored in `%APPDATA%/exo-terminal/exo_terminal.db`
 
+### Filter Panel Design
+- **No content-type tabs** — sidebar shows filter sections only
+- **Collapsible sections**: Platform starts expanded; Genre, Year, Developer, Publisher, Series start collapsed
+- **Multi-select**: each category allows selecting multiple values (OR semantics); arrays passed to backend
+- **Header label format**: "Category" when empty, "Category: val1, val2" when selections exist
+- **Genre nesting**: genres containing " / " separator are grouped under their parent with collapsible sub-groups
+- **Reset Filters button**: appears at top of sidebar whenever any filter array is non-empty or favoritesOnly is true
+- **No LIMIT** on filter option queries — all distinct values shown in alphabetical order
+- **Sidebar scrolls as whole** — block layout, no sub-section overflow
+
 ### Favorites
 - Read from LaunchBox XML `<Favorite>` field during scan
 - Toggle updates SQLite immediately
@@ -47,7 +57,7 @@ A DOS-style alternate frontend for eXo collections (eXoDOS, eXoWin9x, etc.) buil
 - Component tests use `render` from `solid-js/web` directly (no separate testing library)
 - Test files cover all user-facing functionality:
   - **Commands**: `commands.test.ts`, `commands-remaining.test.ts` — all 14 Tauri IPC wrappers
-  - **Store**: `store.test.ts`, `filterEdgeCases.test.ts` — `fetchGames` param mapping for every filter/sort/pagination field, all 6 content types, combined filter scenarios, search query edge cases
+  - **Store**: `store.test.ts`, `filterEdgeCases.test.ts` — `fetchGames` param mapping for every filter/sort/pagination field (multi-select arrays), all 6 content types, combined filter scenarios, search query edge cases
   - **Keyboard**: `keyboard.test.ts`, `guardedLaunch.test.ts` — dispatch logic, context matching, INPUT element passthrough, debounce guard
   - **Filter logic**: `filters.test.ts` — param building, sort toggle, sort indicators
   - **Components**: `dialog.test.tsx`, `statusBar.test.tsx`, `gameList.test.tsx`, `searchBar.test.tsx`, `filterPanel.test.tsx`, `menuBar.test.tsx`, `collectionPicker.test.tsx`

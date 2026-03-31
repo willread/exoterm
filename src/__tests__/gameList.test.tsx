@@ -7,6 +7,7 @@ import {
   setTotalCount,
   setSelectedIndex,
   setFilters,
+  filters,
   setSearchQuery,
 } from "../lib/store";
 
@@ -41,7 +42,12 @@ beforeEach(() => {
   setSelectedIndex(0);
   setSearchQuery("");
   setFilters("contentType", "Game");
-  setFilters("genre", null);
+  setFilters("genre", []);
+  setFilters("developer", []);
+  setFilters("publisher", []);
+  setFilters("year", []);
+  setFilters("series", []);
+  setFilters("platform", []);
   setFilters("sortBy", "title");
   setFilters("sortDir", "asc");
   setFilters("offset", 0);
@@ -189,6 +195,70 @@ describe("GameList sort indicators", () => {
     );
     expect(yearHeader?.textContent).not.toContain("▲");
     expect(yearHeader?.textContent).not.toContain("▼");
+  });
+
+  it("clicking a header column changes sortBy to that column", async () => {
+    setFilters("sortBy", "title");
+    setFilters("sortDir", "asc");
+    dispose = render(() => <GameList />, document.body);
+    await Promise.resolve();
+
+    const headerCols = document.querySelectorAll(".game-list__header-col");
+    const yearHeader = Array.from(headerCols).find((c) =>
+      c.textContent?.startsWith("Year")
+    ) as HTMLElement;
+    yearHeader.click();
+
+    expect(filters.sortBy).toBe("year");
+    expect(filters.sortDir).toBe("asc");
+  });
+
+  it("clicking the active sort column toggles direction from asc to desc", async () => {
+    setFilters("sortBy", "title");
+    setFilters("sortDir", "asc");
+    dispose = render(() => <GameList />, document.body);
+    await Promise.resolve();
+
+    const headerCols = document.querySelectorAll(".game-list__header-col");
+    const titleHeader = Array.from(headerCols).find((c) =>
+      c.textContent?.startsWith("Title")
+    ) as HTMLElement;
+    titleHeader.click();
+
+    expect(filters.sortBy).toBe("title");
+    expect(filters.sortDir).toBe("desc");
+  });
+
+  it("clicking the active sort column toggles direction from desc to asc", async () => {
+    setFilters("sortBy", "year");
+    setFilters("sortDir", "desc");
+    dispose = render(() => <GameList />, document.body);
+    await Promise.resolve();
+
+    const headerCols = document.querySelectorAll(".game-list__header-col");
+    const yearHeader = Array.from(headerCols).find((c) =>
+      c.textContent?.startsWith("Year")
+    ) as HTMLElement;
+    yearHeader.click();
+
+    expect(filters.sortBy).toBe("year");
+    expect(filters.sortDir).toBe("asc");
+  });
+
+  it("clicking a different column resets sort direction to asc", async () => {
+    setFilters("sortBy", "title");
+    setFilters("sortDir", "desc");
+    dispose = render(() => <GameList />, document.body);
+    await Promise.resolve();
+
+    const headerCols = document.querySelectorAll(".game-list__header-col");
+    const devHeader = Array.from(headerCols).find((c) =>
+      c.textContent?.startsWith("Developer")
+    ) as HTMLElement;
+    devHeader.click();
+
+    expect(filters.sortBy).toBe("developer");
+    expect(filters.sortDir).toBe("asc");
   });
 });
 
