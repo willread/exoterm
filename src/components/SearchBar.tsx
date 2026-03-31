@@ -1,5 +1,5 @@
 import { Component } from "solid-js";
-import { searchQuery, setSearchQuery, setFilters, setSelectedIndex } from "../lib/store";
+import { setSearchQuery, setFilters, setSelectedIndex } from "../lib/store";
 
 export const SearchBar: Component = () => {
   let inputRef: HTMLInputElement | undefined;
@@ -11,10 +11,10 @@ export const SearchBar: Component = () => {
       setSearchQuery(value);
       setFilters("offset", 0);
       setSelectedIndex(0);
-    }, 100);
+    }, 150);
   };
 
-  // Expose focus method globally
+  // Expose focus method globally for keyboard shortcut
   (window as any).__focusSearch = () => inputRef?.focus();
 
   return (
@@ -24,7 +24,6 @@ export const SearchBar: Component = () => {
         ref={inputRef}
         class="search-bar__input"
         type="text"
-        value={searchQuery()}
         onInput={(e) => handleInput(e.currentTarget.value)}
         onKeyDown={(e) => {
           if (e.key === "Escape") {
@@ -35,6 +34,7 @@ export const SearchBar: Component = () => {
         }}
         placeholder="Type to search..."
         spellcheck={false}
+        autocomplete="off"
       />
     </div>
   );

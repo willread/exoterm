@@ -20,7 +20,7 @@ import {
   fetchGames,
   setSearchQuery,
 } from "./lib/store";
-import { initKeyboardHandler, registerKey } from "./lib/keyboard";
+import { initKeyboardHandler, registerKey, guardedLaunch } from "./lib/keyboard";
 import { launchGame, toggleFavorite } from "./lib/commands";
 
 const App: Component = () => {
@@ -119,7 +119,7 @@ const App: Component = () => {
         const games = gameList();
         const idx = selectedIndex();
         if (games[idx]) {
-          launchGame(games[idx].id);
+          guardedLaunch(() => launchGame(games[idx].id));
         }
       },
     });

@@ -11,6 +11,7 @@ interface Binding {
 
 const bindings: Binding[] = [];
 let currentContext = "list";
+let launching = false;
 
 export function setContext(ctx: string) {
   currentContext = ctx;
@@ -33,9 +34,20 @@ export function unregisterKey(key: string, context?: string) {
 
 export function initKeyboardHandler() {
   document.addEventListener("keydown", (e) => {
-    // Don't intercept when typing in an input
+    // Ignore key repeats for launch-triggering keys
+    if (e.repeat && (e.key === "Enter")) return;
+
     const target = e.target as HTMLElement;
-    if (target.tagName === "INPUT" && !e.altKey && !e.ctrlKey && e.key !== "Escape" && e.key !== "Tab") {
+    const tag = target.tagName;
+
+    // Don't intercept typing in inputs/buttons (except Escape/Tab/Alt combos)
+    if (
+      (tag === "INPUT" || tag === "BUTTON" || tag === "SELECT") &&
+      !e.altKey &&
+      !e.ctrlKey &&
+      e.key !== "Escape" &&
+      e.key !== "Tab"
+    ) {
       return;
     }
 
@@ -56,5 +68,14 @@ export function initKeyboardHandler() {
         return;
       }
     }
+  });
+}
+
+/** Debounced launch guard — prevents double-firing */
+export function guardedLaunch(fn: () => Promise<any>) {
+  if (launching) return;
+  launching = true;
+  fn().finally(() => {
+    setTimeout(() => { launching = false; }, 2000);
   });
 }

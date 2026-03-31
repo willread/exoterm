@@ -1,4 +1,4 @@
-import { Component, For, Show, createEffect, on } from "solid-js";
+import { Component, For, Show, createEffect } from "solid-js";
 import {
   gameList,
   selectedIndex,
@@ -15,28 +15,23 @@ import { toggleFavorite } from "../lib/commands";
 export const GameList: Component = () => {
   let listRef: HTMLDivElement | undefined;
 
-  // Fetch games when search/filters change
-  createEffect(
-    on(
-      () => [
-        searchQuery(),
-        filters.contentType,
-        filters.genre,
-        filters.developer,
-        filters.publisher,
-        filters.year,
-        filters.series,
-        filters.platform,
-        filters.favoritesOnly,
-        filters.sortBy,
-        filters.sortDir,
-        filters.offset,
-      ],
-      () => {
-        fetchGames();
-      }
-    )
-  );
+  // Fetch whenever search query or any filter changes.
+  // Plain createEffect tracks all reactive reads inside it automatically.
+  createEffect(() => {
+    const _q = searchQuery();
+    const _ct = filters.contentType;
+    const _genre = filters.genre;
+    const _dev = filters.developer;
+    const _pub = filters.publisher;
+    const _year = filters.year;
+    const _series = filters.series;
+    const _plat = filters.platform;
+    const _fav = filters.favoritesOnly;
+    const _sortBy = filters.sortBy;
+    const _sortDir = filters.sortDir;
+    const _offset = filters.offset;
+    fetchGames();
+  });
 
   // Update selected game id when index changes
   createEffect(() => {
@@ -53,15 +48,12 @@ export const GameList: Component = () => {
   createEffect(() => {
     const idx = selectedIndex();
     if (listRef) {
-      const rowHeight = 16; // --char-h
-      const scrollTop = listRef.scrollTop;
-      const viewHeight = listRef.clientHeight;
+      const rowHeight = 16;
       const rowTop = idx * rowHeight;
-
-      if (rowTop < scrollTop) {
+      if (rowTop < listRef.scrollTop) {
         listRef.scrollTop = rowTop;
-      } else if (rowTop + rowHeight > scrollTop + viewHeight) {
-        listRef.scrollTop = rowTop + rowHeight - viewHeight;
+      } else if (rowTop + rowHeight > listRef.scrollTop + listRef.clientHeight) {
+        listRef.scrollTop = rowTop + rowHeight - listRef.clientHeight;
       }
     }
   });
@@ -82,7 +74,7 @@ export const GameList: Component = () => {
     return "";
   };
 
-  const handleFavorite = async (id: number, e: Event) => {
+  const handleFavorite = async (id: number, e: MouseEvent) => {
     e.stopPropagation();
     await toggleFavorite(id);
     fetchGames();
@@ -90,11 +82,8 @@ export const GameList: Component = () => {
 
   return (
     <div class="game-list">
-      <div class="game-list__header">
-        <div
-          class="game-list__header-col game-list__col--fav"
-          title="Favorite"
-        >
+      <div class="game-list__header no-select">
+        <div class="game-list__header-col game-list__col--fav" title="Favorite">
           *
         </div>
         <div
@@ -143,7 +132,6 @@ export const GameList: Component = () => {
                   setSelectedGameId(game.id);
                 }}
                 onDblClick={() => {
-                  // Launch on double-click
                   import("../lib/commands").then((c) => c.launchGame(game.id));
                 }}
               >
@@ -153,9 +141,7 @@ export const GameList: Component = () => {
                 >
                   {game.favorite ? "\u2605" : ""}
                 </div>
-                <div class="game-list__col game-list__col--title">
-                  {game.title}
-                </div>
+                <div class="game-list__col game-list__col--title">{game.title}</div>
                 <div class="game-list__col game-list__col--year">
                   {game.release_year ?? ""}
                 </div>

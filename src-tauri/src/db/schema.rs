@@ -77,3 +77,80 @@ pub fn initialize(conn: &Connection) -> rusqlite::Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rusqlite::Connection;
+
+    #[test]
+    fn test_schema_initializes_cleanly() {
+        let conn = Connection::open_in_memory().unwrap();
+        assert!(initialize(&conn).is_ok(), "Schema should initialize without error");
+    }
+
+    #[test]
+    fn test_schema_is_idempotent() {
+        let conn = Connection::open_in_memory().unwrap();
+        initialize(&conn).unwrap();
+        // Calling again should not fail (IF NOT EXISTS guards)
+        assert!(initialize(&conn).is_ok(), "Schema should be safe to initialize twice");
+    }
+
+    #[test]
+    fn test_collections_table_exists() {
+        let conn = Connection::open_in_memory().unwrap();
+        initialize(&conn).unwrap();
+        conn.execute(
+            "INSERT INTO collections (name, path) VALUES ('eXoDOS', 'E:\\Exo\\eXoDOS')",
+            [],
+        )
+        .expect("Should be able to insert into collections");
+
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM collections", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn test_games_table_exists() {
+        let conn = Connection::open_in_memory().unwrap();
+        initialize(&conn).unwrap();
+        conn.execute(
+            "INSERT INTO collections (name, path) VALUES ('test', '/test')",
+            [],
+        )
+        .unwrap();
+        let cid: i64 = conn
+            .query_row("SELECT id FROM collections", [], |r| r.get(0))
+            .unwrap();
+
+        conn.execute(
+            "INSERT INTO games (collection_id, title, application_path, title_normalized) VALUES (?1, 'Doom', 'doom.bat', 'doom')",
+            rusqlite::params![cid],
+        )
+        .expect("Should be able to insert into games");
+
+        let title: String = conn
+            .query_row("SELECT title FROM games WHERE id = 1", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(title, "Doom");
+    }
+
+    #[test]
+    fn test_games_favorite_defaults_to_zero() {
+        let conn = Connection::open_in_memory().unwrap();
+        initialize(&conn).unwrap();
+        conn.execute("INSERT INTO collections (name, path) VALUES ('t', '/t')", []).unwrap();
+        let cid: i64 = conn.query_row("SELECT id FROM collections", [], |r| r.get(0)).unwrap();
+        conn.execute(
+            "INSERT INTO games (collection_id, title, application_path, title_normalized) VALUES (?1, 'X', 'x.bat', 'x')",
+            rusqlite::params![cid],
+        ).unwrap();
+        let fav: i32 = conn
+            .query_row("SELECT favorite FROM games", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(fav, 0);
+    }
+}

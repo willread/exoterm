@@ -232,3 +232,215 @@ pub fn scan_collection(
 
     Ok(total_count)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rusqlite::Connection;
+
+    fn make_db() -> Connection {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "PRAGMA journal_mode=WAL;
+             CREATE TABLE collections (
+                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 name TEXT NOT NULL,
+                 path TEXT NOT NULL UNIQUE,
+                 last_scanned INTEGER
+             );
+             CREATE TABLE games (
+                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 collection_id INTEGER NOT NULL,
+                 title TEXT NOT NULL,
+                 sort_title TEXT,
+                 platform TEXT NOT NULL DEFAULT '',
+                 developer TEXT,
+                 publisher TEXT,
+                 release_year INTEGER,
+                 genre TEXT,
+                 series TEXT,
+                 max_players TEXT,
+                 play_mode TEXT,
+                 overview TEXT,
+                 application_path TEXT NOT NULL,
+                 root_folder TEXT,
+                 source TEXT,
+                 favorite INTEGER NOT NULL DEFAULT 0,
+                 content_type TEXT NOT NULL DEFAULT 'Game',
+                 lb_id TEXT,
+                 lb_database_id TEXT,
+                 title_normalized TEXT
+             );",
+        )
+        .unwrap();
+        conn
+    }
+
+    #[test]
+    fn test_content_type_from_filename() {
+        assert_eq!(content_type_from_filename("MS-DOS.xml"), "Game");
+        assert_eq!(content_type_from_filename("MS-DOS Books.xml"), "Book");
+        assert_eq!(
+            content_type_from_filename("MS-DOS Magazines & Newsletters.xml"),
+            "Magazine"
+        );
+        assert_eq!(content_type_from_filename("MS-DOS Videos.xml"), "Video");
+        assert_eq!(
+            content_type_from_filename("Soundtracks.xml"),
+            "Soundtrack"
+        );
+        assert_eq!(
+            content_type_from_filename("MS-DOS Catalogs.xml"),
+            "Catalog"
+        );
+        assert_eq!(content_type_from_filename("Windows 95.xml"), "Game");
+    }
+
+    #[test]
+    fn test_parse_minimal_xml() {
+        let conn = make_db();
+        conn.execute(
+            "INSERT INTO collections (name, path) VALUES ('Test', '/test')",
+            [],
+        )
+        .unwrap();
+        let collection_id: i64 = conn
+            .query_row("SELECT id FROM collections WHERE name = 'Test'", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+
+        let xml = r#"<?xml version="1.0" standalone="yes"?>
+<LaunchBox>
+  <Game>
+    <Title>Doom</Title>
+    <Platform>MS-DOS</Platform>
+    <Developer>id Software</Developer>
+    <Publisher>GT Interactive</Publisher>
+    <ReleaseDate>1993-12-10T00:00:00</ReleaseDate>
+    <Genres>Action</Genres>
+    <ApplicationPath>eXo\eXoDOS\!dos\Doom\Doom.bat</ApplicationPath>
+    <RootFolder>eXo\eXoDOS\!dos\Doom</RootFolder>
+    <Favorite>true</Favorite>
+    <Notes>A classic FPS game.</Notes>
+  </Game>
+  <Game>
+    <Title>Quake</Title>
+    <Platform>MS-DOS</Platform>
+    <Developer>id Software</Developer>
+    <ApplicationPath>eXo\eXoDOS\!dos\Quake\Quake.bat</ApplicationPath>
+    <Favorite>false</Favorite>
+  </Game>
+</LaunchBox>"#;
+
+        // Write to a temp file
+        let tmp = std::env::temp_dir().join("test_minimal.xml");
+        std::fs::write(&tmp, xml).unwrap();
+
+        let mut progress_calls = 0usize;
+        let count = parse_platform_xml(&conn, collection_id, &tmp, &mut |_| {
+            progress_calls += 1;
+        })
+        .unwrap();
+
+        assert_eq!(count, 2, "Should have inserted 2 games");
+
+        let titles: Vec<String> = {
+            let mut stmt = conn
+                .prepare("SELECT title FROM games ORDER BY title")
+                .unwrap();
+            stmt.query_map([], |r| r.get(0))
+                .unwrap()
+                .collect::<rusqlite::Result<Vec<_>>>()
+                .unwrap()
+        };
+        assert_eq!(titles, vec!["Doom", "Quake"]);
+
+        let (fav, release_year, genre, developer): (i32, Option<i32>, Option<String>, Option<String>) = conn
+            .query_row(
+                "SELECT favorite, release_year, genre, developer FROM games WHERE title = 'Doom'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+            )
+            .unwrap();
+
+        assert_eq!(fav, 1, "Doom should be a favorite");
+        assert_eq!(release_year, Some(1993));
+        assert_eq!(genre.as_deref(), Some("Action"));
+        assert_eq!(developer.as_deref(), Some("id Software"));
+
+        std::fs::remove_file(&tmp).ok();
+    }
+
+    #[test]
+    fn test_parse_skips_games_without_application_path() {
+        let conn = make_db();
+        conn.execute(
+            "INSERT INTO collections (name, path) VALUES ('Test', '/test2')",
+            [],
+        )
+        .unwrap();
+        let collection_id: i64 = conn
+            .query_row("SELECT id FROM collections WHERE name = 'Test'", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+
+        let xml = r#"<?xml version="1.0" standalone="yes"?>
+<LaunchBox>
+  <Game>
+    <Title>No Path Game</Title>
+    <Platform>MS-DOS</Platform>
+  </Game>
+  <Game>
+    <Title>With Path Game</Title>
+    <Platform>MS-DOS</Platform>
+    <ApplicationPath>eXo\eXoDOS\!dos\Test\Test.bat</ApplicationPath>
+  </Game>
+</LaunchBox>"#;
+
+        let tmp = std::env::temp_dir().join("test_no_path.xml");
+        std::fs::write(&tmp, xml).unwrap();
+
+        let count = parse_platform_xml(&conn, collection_id, &tmp, &mut |_| {}).unwrap();
+        assert_eq!(count, 1, "Only game with ApplicationPath should be inserted");
+
+        std::fs::remove_file(&tmp).ok();
+    }
+
+    #[test]
+    fn test_parse_favorite_false_default() {
+        let conn = make_db();
+        conn.execute(
+            "INSERT INTO collections (name, path) VALUES ('Test', '/test3')",
+            [],
+        )
+        .unwrap();
+        let collection_id: i64 = conn
+            .query_row("SELECT id FROM collections WHERE name = 'Test'", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+
+        let xml = r#"<?xml version="1.0" standalone="yes"?>
+<LaunchBox>
+  <Game>
+    <Title>Test Game</Title>
+    <Platform>MS-DOS</Platform>
+    <ApplicationPath>eXo\eXoDOS\!dos\Test\Test.bat</ApplicationPath>
+  </Game>
+</LaunchBox>"#;
+
+        let tmp = std::env::temp_dir().join("test_fav_default.xml");
+        std::fs::write(&tmp, xml).unwrap();
+
+        parse_platform_xml(&conn, collection_id, &tmp, &mut |_| {}).unwrap();
+
+        let fav: i32 = conn
+            .query_row("SELECT favorite FROM games WHERE title = 'Test Game'", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(fav, 0, "Favorite should default to false");
+
+        std::fs::remove_file(&tmp).ok();
+    }
+}

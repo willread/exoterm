@@ -1,5 +1,5 @@
 import { Component, Show, onMount, onCleanup } from "solid-js";
-import { activeMenu, setActiveMenu, setActiveDialog, setFilters, theme, setTheme, crtEnabled, setCrtEnabled } from "../lib/store";
+import { activeMenu, setActiveMenu, setActiveDialog, filters, setFilters, theme, setTheme, crtEnabled, setCrtEnabled } from "../lib/store";
 import type { Theme } from "../lib/types";
 
 const THEMES: { label: string; value: Theme }[] = [
@@ -50,7 +50,7 @@ export const MenuBar: Component = () => {
               Add Collection...
             </div>
             <div class="dropdown__separator" />
-            <div class="dropdown__item" onClick={() => { closeMenu(); }}>
+            <div class="dropdown__item" onClick={() => { closeMenu(); import("@tauri-apps/api/window").then(m => m.getCurrentWindow().close()); }}>
               Exit <span class="dropdown__shortcut">Alt+F4</span>
             </div>
           </div>
@@ -65,7 +65,7 @@ export const MenuBar: Component = () => {
         <span class="menu-bar__hotkey">V</span>iew
         <Show when={activeMenu() === "view"}>
           <div class="dropdown">
-            <div class="dropdown__item" onClick={() => { setFilters("favoritesOnly", !false); closeMenu(); }}>
+            <div class="dropdown__item" onClick={() => { setFilters("favoritesOnly", !filters.favoritesOnly); closeMenu(); }}>
               Favorites Only
             </div>
             <div class="dropdown__separator" />
