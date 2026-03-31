@@ -20,7 +20,6 @@ import {
   gameList,
   selectedIndex,
   setSelectedIndex,
-  fetchGames,
   setSearchQuery,
   gameChoice,
   setGameChoice,
@@ -229,8 +228,6 @@ const App: Component = () => {
       },
     });
 
-    // Initial fetch
-    fetchGames();
   });
 
   const handleChoice = (option: string) => {

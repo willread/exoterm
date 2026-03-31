@@ -1,6 +1,13 @@
 use rusqlite::Connection;
 
 pub fn initialize(conn: &Connection) -> rusqlite::Result<()> {
+    // Migrate: populate title_normalized for any rows that are missing it.
+    // This handles databases created before title_normalized was reliably set
+    // on insert, which caused ORDER BY title_normalized to do nothing (all NULLs).
+    let _ = conn.execute_batch(
+        "UPDATE games SET title_normalized = lower(title) WHERE title_normalized IS NULL OR title_normalized = '';"
+    );
+
     conn.execute_batch(
         "
         CREATE TABLE IF NOT EXISTS collections (
