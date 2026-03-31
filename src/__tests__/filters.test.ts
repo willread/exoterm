@@ -20,7 +20,7 @@ describe("filter state → searchGames params", () => {
       sort_by: "title",
       sort_dir: "asc",
       offset: 0,
-      limit: 200,
+      limit: 50000,
     };
     const merged = { ...base, ...overrides };
     // Replicate the fetchGames filtering logic: undefined for falsy optionals

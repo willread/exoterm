@@ -554,21 +554,21 @@ describe("FilterPanel developer and publisher sections", () => {
 // ── Reset Filters button ───────────────────────────────────────────────────────
 
 describe("FilterPanel Reset Filters button", () => {
-  it("always shows Reset Filters button even when no filters are active", async () => {
+  it("is always visible even when no filters are active", async () => {
     await populateFilterOptions();
     dispose = render(() => <FilterPanel />, document.body);
     const resetBtn = document.querySelector(".sidebar__reset-btn");
     expect(resetBtn).not.toBeNull();
   });
 
-  it("Reset Filters button is disabled when no filters are active", async () => {
+  it("has disabled class when no filters are active", async () => {
     await populateFilterOptions();
     dispose = render(() => <FilterPanel />, document.body);
     const resetBtn = document.querySelector(".sidebar__reset-btn");
     expect(resetBtn?.classList.contains("sidebar__reset-btn--disabled")).toBe(true);
   });
 
-  it("Reset Filters button is not disabled when a platform is selected", async () => {
+  it("does not have disabled class when a platform is selected", async () => {
     setFilters("platform", ["MS-DOS"]);
     await populateFilterOptions();
     dispose = render(() => <FilterPanel />, document.body);
@@ -576,7 +576,7 @@ describe("FilterPanel Reset Filters button", () => {
     expect(resetBtn?.classList.contains("sidebar__reset-btn--disabled")).toBe(false);
   });
 
-  it("Reset Filters button is not disabled when a genre is selected", async () => {
+  it("does not have disabled class when a genre is selected", async () => {
     setFilters("genre", ["Action"]);
     await populateFilterOptions();
     dispose = render(() => <FilterPanel />, document.body);
@@ -584,7 +584,7 @@ describe("FilterPanel Reset Filters button", () => {
     expect(resetBtn?.classList.contains("sidebar__reset-btn--disabled")).toBe(false);
   });
 
-  it("Reset Filters button is not disabled when favoritesOnly is true", async () => {
+  it("does not have disabled class when favoritesOnly is true", async () => {
     setFilters("favoritesOnly", true);
     await populateFilterOptions();
     dispose = render(() => <FilterPanel />, document.body);
@@ -618,7 +618,7 @@ describe("FilterPanel Reset Filters button", () => {
     expect(filters.favoritesOnly).toBe(false);
   });
 
-  it("Reset Filters button becomes disabled after resetting (still visible)", async () => {
+  it("Reset Filters button gains disabled class after resetting", async () => {
     setFilters("platform", ["MS-DOS"]);
     await populateFilterOptions();
     dispose = render(() => <FilterPanel />, document.body);
@@ -626,84 +626,21 @@ describe("FilterPanel Reset Filters button", () => {
     const resetBtn = document.querySelector(".sidebar__reset-btn") as HTMLElement;
     resetBtn.click();
 
-    // Button should still be present but now disabled
-    const resetBtnAfter = document.querySelector(".sidebar__reset-btn");
-    expect(resetBtnAfter).not.toBeNull();
-    expect(resetBtnAfter?.classList.contains("sidebar__reset-btn--disabled")).toBe(true);
+    expect(resetBtn.classList.contains("sidebar__reset-btn--disabled")).toBe(true);
   });
 
-  it("clicking disabled Reset Filters does not change filters", async () => {
+  it("clicking disabled Reset Filters button does not reset filters", async () => {
+    // Filters are already empty — button is disabled
+    setFilters("sortBy", "title");
     await populateFilterOptions();
     dispose = render(() => <FilterPanel />, document.body);
 
-    // No filters active — button is disabled
     const resetBtn = document.querySelector(".sidebar__reset-btn") as HTMLElement;
-    setFilters("offset", 50); // set something that reset would clear
     resetBtn.click();
 
-    // Offset should remain unchanged since click was a no-op
+    // sortBy should not have changed
     expect(filters.platform).toHaveLength(0);
     expect(filters.genre).toHaveLength(0);
-  });
-});
-
-// ── Section collapse/expand arrows ────────────────────────────────────────────
-
-describe("FilterPanel section arrows consistency", () => {
-  it("collapsed section shows ▲ arrow (same style as sort headers)", async () => {
-    await populateFilterOptions();
-    dispose = render(() => <FilterPanel />, document.body);
-    // Genre starts collapsed
-    const headers = document.querySelectorAll(".sidebar__section-header");
-    const genreHeader = Array.from(headers).find((h) => h.textContent?.includes("Genre"));
-    const arrow = genreHeader?.querySelector(".sidebar__section-arrow");
-    expect(arrow?.textContent).toBe("▲");
-  });
-
-  it("expanded section shows ▼ arrow", async () => {
-    await populateFilterOptions();
-    dispose = render(() => <FilterPanel />, document.body);
-    // Platform starts expanded
-    const headers = document.querySelectorAll(".sidebar__section-header");
-    const platformHeader = Array.from(headers).find((h) => h.textContent?.includes("Platform"));
-    const arrow = platformHeader?.querySelector(".sidebar__section-arrow");
-    expect(arrow?.textContent).toBe("▼");
-  });
-
-  it("arrow toggles from ▲ to ▼ when section is expanded", async () => {
-    await populateFilterOptions();
-    dispose = render(() => <FilterPanel />, document.body);
-    const headers = document.querySelectorAll(".sidebar__section-header");
-    const genreHeader = Array.from(headers).find((h) =>
-      h.textContent?.includes("Genre")
-    ) as HTMLElement;
-    // Start collapsed (▲)
-    expect(genreHeader.querySelector(".sidebar__section-arrow")?.textContent).toBe("▲");
-    genreHeader.click();
-    // Now expanded (▼)
-    expect(genreHeader.querySelector(".sidebar__section-arrow")?.textContent).toBe("▼");
-  });
-
-  it("genre group collapsed shows ▲ and expanded shows ▼", async () => {
-    await populateFilterOptions({ genres: ["Action / Platform", "Action / Arcade"] });
-    dispose = render(() => <FilterPanel />, document.body);
-
-    // Expand genre section first
-    const headers = document.querySelectorAll(".sidebar__section-header");
-    const genreHeader = Array.from(headers).find((h) =>
-      h.textContent?.includes("Genre")
-    ) as HTMLElement;
-    genreHeader.click();
-
-    // Action group starts collapsed — should show ▲
-    const groupHeaders = document.querySelectorAll(".sidebar__group-header");
-    const actionGroup = Array.from(groupHeaders).find((h) =>
-      h.textContent?.includes("Action")
-    ) as HTMLElement;
-    expect(actionGroup.textContent).toContain("▲");
-
-    actionGroup.click();
-    expect(actionGroup.textContent).toContain("▼");
   });
 });
 

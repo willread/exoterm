@@ -65,6 +65,7 @@ fn initialize_state() -> Result<AppState, String> {
         config: Mutex::new(config),
         game_pid: Mutex::new(None),
         game_stdin: Mutex::new(None),
+        choice_dir: Mutex::new(None),
     })
 }
 

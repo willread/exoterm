@@ -128,7 +128,7 @@ export const FilterPanel: Component = () => {
 
   return (
     <div class="sidebar" tabindex="-1">
-      {/* Reset Filters button — always visible, disabled when no active filters */}
+      {/* Reset Filters button — always visible, disabled when no filters active */}
       <div
         class={`sidebar__reset-btn${hasActiveFilters() ? "" : " sidebar__reset-btn--disabled"}`}
         onClick={() => { if (hasActiveFilters()) resetAllFilters(); }}

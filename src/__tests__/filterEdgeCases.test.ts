@@ -41,7 +41,7 @@ beforeEach(() => {
   setFilters("sortBy", "title");
   setFilters("sortDir", "asc");
   setFilters("offset", 0);
-  setFilters("limit", 200);
+  setFilters("limit", 50000);
 });
 
 describe("remaining filter params passed to search_games", () => {

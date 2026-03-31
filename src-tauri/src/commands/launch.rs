@@ -1,4 +1,4 @@
-use std::io::{Read, Write};
+use std::io::Read;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::thread;
@@ -7,7 +7,8 @@ use tauri::{AppHandle, Emitter, State};
 use crate::state::AppState;
 
 /// The choice.bat shim that replaces CHOICE.EXE.
-/// It outputs a protocol string our app reads, then waits for input on stdin.
+/// It outputs a protocol string our app reads, then polls a temp file for the response.
+/// The Rust send_game_input command writes the user's choice to %EXO_CHOICE_DIR%\choice_response.txt
 const CHOICE_SHIM: &str = r#"@echo off
 setlocal enabledelayedexpansion
 set "C=YN"
@@ -43,18 +44,27 @@ shift
 goto :parse
 :run
 echo ##CHOICE##!M!##!C!##
-set /p "R="
+del "%EXO_CHOICE_DIR%\choice_response.txt" 2>nul
+:waitloop
+if exist "%EXO_CHOICE_DIR%\choice_response.txt" (
+    set /p "R=" < "%EXO_CHOICE_DIR%\choice_response.txt"
+    del "%EXO_CHOICE_DIR%\choice_response.txt" 2>nul
+    goto :calc
+)
+ping -n 1 -w 200 127.0.0.1 >nul 2>&1
+goto :waitloop
+:calc
 set "R=!R:~0,1!"
 if not defined R set "R=!C:~0,1!"
 set /a "E=0"
 set /a "I=0"
-:calc
+:calcloop
 call set "X=%%C:~!I!,1%%"
 if "!X!"=="" exit /b 0
 set /a "E+=1"
 if /i "!X!"=="!R!" exit /b !E!
 set /a "I+=1"
-goto :calc
+goto :calcloop
 "#;
 
 /// Ensure the choice.bat shim exists in the app data shims directory.
@@ -113,6 +123,9 @@ pub fn launch_game(
     // Set up the CHOICE shim so CHOICE.EXE never runs
     let shims_dir = ensure_choice_shim()?;
 
+    // Store shims_dir so send_game_input can write the response file
+    *state.choice_dir.lock().map_err(|e| e.to_string())? = Some(shims_dir.clone());
+
     // Prepend shims dir to PATH so our choice.bat overrides the real CHOICE.EXE
     let current_path = std::env::var("PATH").unwrap_or_default();
     let new_path = format!("{};{}", shims_dir.to_string_lossy(), current_path);
@@ -121,6 +134,7 @@ pub fn launch_game(
         .args(["/C", &full_path.to_string_lossy()])
         .current_dir(&work_dir)
         .env("PATH", &new_path)
+        .env("EXO_CHOICE_DIR", shims_dir.to_string_lossy().as_ref())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -230,12 +244,13 @@ pub struct ChoicePayload {
 
 #[tauri::command]
 pub fn send_game_input(state: State<AppState>, input: String) -> Result<(), String> {
-    let mut guard = state.game_stdin.lock().map_err(|e| e.to_string())?;
-    if let Some(ref mut stdin) = *guard {
-        // Always send with \r\n so set /p in the shim completes
-        let to_write = format!("{}\r\n", input);
-        stdin.write_all(to_write.as_bytes()).map_err(|e| e.to_string())?;
-        stdin.flush().map_err(|e| e.to_string())?;
+    // Write the user's choice to the response file so the CHOICE shim can pick it up
+    let guard = state.choice_dir.lock().map_err(|e| e.to_string())?;
+    if let Some(ref dir) = *guard {
+        let response_path = dir.join("choice_response.txt");
+        // Write just the first character (what set /p will read)
+        let first_char = input.chars().next().map(|c| c.to_string()).unwrap_or_default();
+        std::fs::write(&response_path, first_char).map_err(|e| e.to_string())?;
     }
     Ok(())
 }
@@ -250,6 +265,14 @@ pub fn kill_game(state: State<AppState>) -> Result<(), String> {
 pub fn kill_current_game(state: &AppState) {
     // Close stdin first
     if let Ok(mut guard) = state.game_stdin.lock() {
+        guard.take();
+    }
+
+    // Clean up any pending choice response file
+    if let Ok(mut guard) = state.choice_dir.lock() {
+        if let Some(ref dir) = *guard {
+            let _ = std::fs::remove_file(dir.join("choice_response.txt"));
+        }
         guard.take();
     }
 

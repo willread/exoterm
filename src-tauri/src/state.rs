@@ -1,4 +1,5 @@
 use rusqlite::Connection;
+use std::path::PathBuf;
 use std::process::ChildStdin;
 use std::sync::Mutex;
 
@@ -11,4 +12,6 @@ pub struct AppState {
     pub game_pid: Mutex<Option<u32>>,
     /// Stdin handle of the game process (for sending choices)
     pub game_stdin: Mutex<Option<ChildStdin>>,
+    /// Directory where the CHOICE shim polls for responses
+    pub choice_dir: Mutex<Option<PathBuf>>,
 }
