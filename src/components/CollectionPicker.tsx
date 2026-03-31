@@ -11,13 +11,14 @@ import {
   fetchGames,
   refetchFilterOptions,
 } from "../lib/store";
-import { scanCollection, validateCollectionPath } from "../lib/commands";
+import { scanCollection, validateCollectionPath, deleteCollection } from "../lib/commands";
 
 export const CollectionPicker: Component = () => {
   const [selectedPath, setSelectedPath] = createSignal("");
   const [collectionName, setCollectionName] = createSignal("");
   const [error, setError] = createSignal("");
   const [isScanning, setIsScanning] = createSignal(false);
+  const [confirmDeleteId, setConfirmDeleteId] = createSignal<number | null>(null);
 
   const handleBrowse = async () => {
     const result = await open({
@@ -26,7 +27,6 @@ export const CollectionPicker: Component = () => {
     });
     if (result) {
       setSelectedPath(result as string);
-      // Auto-detect name from path
       const parts = (result as string).replace(/\\/g, "/").split("/");
       setCollectionName(parts[parts.length - 1] || "");
       setError("");
@@ -60,6 +60,10 @@ export const CollectionPicker: Component = () => {
       refetchFilterOptions();
       fetchGames();
 
+      // Reset form
+      setSelectedPath("");
+      setCollectionName("");
+
       // Auto-close after short delay
       setTimeout(() => {
         setActiveDialog(null);
@@ -74,27 +78,62 @@ export const CollectionPicker: Component = () => {
     }
   };
 
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteCollection(id);
+      refetchCollections();
+      refetchFilterOptions();
+      fetchGames();
+      setConfirmDeleteId(null);
+    } catch (e: any) {
+      setError(`Delete failed: ${e}`);
+    }
+  };
+
   const isFirstRun = () => !collections()?.length;
+  const isManageMode = () => activeDialog() === "manage-collections";
+  const isAddMode = () => activeDialog() === "collections";
+  const isVisible = () =>
+    isManageMode() || isAddMode() || (isFirstRun() && activeDialog() !== "about");
+
+  const title = () => {
+    if (isFirstRun()) return "Welcome to eXo Terminal";
+    if (isManageMode()) return "Manage Collections";
+    return "Add Collection";
+  };
 
   return (
     <Dialog
-      title={isFirstRun() ? "Welcome to eXo Terminal" : "Add Collection"}
-      visible={activeDialog() === "collections" || (isFirstRun() && activeDialog() !== "about")}
+      title={title()}
+      visible={isVisible()}
       onClose={() => {
-        if (!isFirstRun()) setActiveDialog(null);
+        if (!isFirstRun()) {
+          setActiveDialog(null);
+          setConfirmDeleteId(null);
+        }
       }}
       footer={
         <div style="display: flex; gap: 2ch;">
-          <button
-            class="dialog__button"
-            onClick={handleAdd}
-            disabled={isScanning()}
-          >
-            {isScanning() ? "Scanning..." : "< Add & Scan >"}
-          </button>
+          <Show when={isManageMode() && !isFirstRun()}>
+            <button class="dialog__button" onClick={() => setActiveDialog("collections")}>
+              {"< Add New >"}
+            </button>
+          </Show>
+          <Show when={isAddMode() || isFirstRun()}>
+            <button
+              class="dialog__button"
+              onClick={handleAdd}
+              disabled={isScanning()}
+            >
+              {isScanning() ? "Scanning..." : "< Add & Scan >"}
+            </button>
+          </Show>
           <Show when={!isFirstRun()}>
-            <button class="dialog__button" onClick={() => setActiveDialog(null)}>
-              {"< Cancel >"}
+            <button class="dialog__button" onClick={() => {
+              setActiveDialog(null);
+              setConfirmDeleteId(null);
+            }}>
+              {"< Close >"}
             </button>
           </Show>
         </div>
@@ -107,45 +146,76 @@ export const CollectionPicker: Component = () => {
         </p>
       </Show>
 
-      {/* Existing collections */}
+      {/* Collection list with delete */}
       <Show when={(collections()?.length ?? 0) > 0}>
         <div style="margin-bottom: 1ch;">
-          <div style="color: var(--fg-dialog);">Existing collections:</div>
+          <div style="color: var(--fg-dialog); margin-bottom: 2px;">Collections:</div>
           <For each={collections()}>
             {(c) => (
-              <div>
-                {"\u2022"} {c.name} ({c.game_count.toLocaleString()} items)
+              <div style="display: flex; align-items: center; padding: 1px 0;">
+                <div style="flex: 1;">
+                  {c.name} ({c.game_count.toLocaleString()} items)
+                </div>
+                <Show when={confirmDeleteId() === c.id} fallback={
+                  <span
+                    style="cursor: pointer; color: var(--fg-dialog); opacity: 0.7;"
+                    onClick={() => setConfirmDeleteId(c.id)}
+                    title="Delete collection"
+                  >
+                    [del]
+                  </span>
+                }>
+                  <span style="color: #AA0000;">
+                    Delete?{" "}
+                    <span
+                      style="cursor: pointer; text-decoration: underline;"
+                      onClick={() => handleDelete(c.id)}
+                    >
+                      Yes
+                    </span>
+                    {" / "}
+                    <span
+                      style="cursor: pointer; text-decoration: underline;"
+                      onClick={() => setConfirmDeleteId(null)}
+                    >
+                      No
+                    </span>
+                  </span>
+                </Show>
               </div>
             )}
           </For>
         </div>
       </Show>
 
-      <div style="margin-bottom: 4px;">
-        <div>Name:</div>
-        <input
-          class="dialog__input"
-          value={collectionName()}
-          onInput={(e) => setCollectionName(e.currentTarget.value)}
-          placeholder="e.g. eXoDOS"
-        />
-      </div>
-
-      <div style="margin-bottom: 4px;">
-        <div>Path:</div>
-        <div style="display: flex; gap: 1ch;">
+      {/* Add collection form: show in add mode, first run, or when manage mode transitions */}
+      <Show when={isAddMode() || isFirstRun()}>
+        <div style="margin-bottom: 4px;">
+          <div>Name:</div>
           <input
             class="dialog__input"
-            value={selectedPath()}
-            onInput={(e) => setSelectedPath(e.currentTarget.value)}
-            placeholder="C:\path\to\eXoDOS"
-            style="flex: 1;"
+            value={collectionName()}
+            onInput={(e) => setCollectionName(e.currentTarget.value)}
+            placeholder="e.g. eXoDOS"
           />
-          <button class="dialog__button" onClick={handleBrowse}>
-            Browse...
-          </button>
         </div>
-      </div>
+
+        <div style="margin-bottom: 4px;">
+          <div>Path:</div>
+          <div style="display: flex; gap: 1ch;">
+            <input
+              class="dialog__input"
+              value={selectedPath()}
+              onInput={(e) => setSelectedPath(e.currentTarget.value)}
+              placeholder="C:\path\to\eXoDOS"
+              style="flex: 1;"
+            />
+            <button class="dialog__button" onClick={handleBrowse}>
+              Browse...
+            </button>
+          </div>
+        </div>
+      </Show>
 
       <Show when={error()}>
         <div style="color: #AA0000; margin-top: 4px;">{error()}</div>

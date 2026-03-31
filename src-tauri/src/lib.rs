@@ -27,6 +27,7 @@ pub fn run() {
             commands::collections::scan_collection,
             commands::collections::list_collections,
             commands::collections::validate_collection_path,
+            commands::collections::delete_collection,
             commands::launch::launch_game,
             commands::launch::kill_game,
             commands::launch::send_game_input,

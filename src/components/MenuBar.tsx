@@ -46,11 +46,19 @@ export const MenuBar: Component = () => {
         <span class="menu-bar__hotkey">F</span>ile
         <Show when={activeMenu() === "file"}>
           <div class="dropdown">
+            <div class="dropdown__item" onClick={() => { setActiveDialog("manage-collections"); closeMenu(); }}>
+              Manage Collections...
+            </div>
             <div class="dropdown__item" onClick={() => { setActiveDialog("collections"); closeMenu(); }}>
               Add Collection...
             </div>
             <div class="dropdown__separator" />
-            <div class="dropdown__item" onClick={() => { closeMenu(); import("@tauri-apps/api/window").then(m => m.getCurrentWindow().close()); }}>
+            <div class="dropdown__item" onClick={() => {
+              closeMenu();
+              import("@tauri-apps/api/window")
+                .then(m => m.getCurrentWindow().close())
+                .catch(e => console.error("Failed to close window:", e));
+            }}>
               Exit <span class="dropdown__shortcut">Alt+F4</span>
             </div>
           </div>

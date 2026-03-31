@@ -75,6 +75,24 @@ pub fn list_collections(state: State<AppState>) -> Result<Vec<CollectionInfo>, S
 }
 
 #[tauri::command]
+pub fn delete_collection(state: State<AppState>, id: i64) -> Result<(), String> {
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+
+    // Delete all games belonging to this collection (FTS trigger handles cleanup)
+    db.execute("DELETE FROM games WHERE collection_id = ?", [id])
+        .map_err(|e| e.to_string())?;
+
+    // Delete the collection itself
+    db.execute("DELETE FROM collections WHERE id = ?", [id])
+        .map_err(|e| e.to_string())?;
+
+    // Rebuild FTS index
+    let _ = db.execute("INSERT INTO games_fts(games_fts) VALUES('rebuild')", []);
+
+    Ok(())
+}
+
+#[tauri::command]
 pub fn validate_collection_path(path: String) -> Result<bool, String> {
     let platforms_dir = Path::new(&path).join("Data").join("Platforms");
     Ok(platforms_dir.exists())

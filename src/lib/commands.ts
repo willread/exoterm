@@ -65,6 +65,10 @@ export async function validateCollectionPath(
   return invoke("validate_collection_path", { path });
 }
 
+export async function deleteCollection(id: number): Promise<void> {
+  return invoke("delete_collection", { id });
+}
+
 export async function launchGame(id: number): Promise<string> {
   return invoke("launch_game", { id });
 }
