@@ -1,0 +1,151 @@
+/* ═══════════════════════════════════════════════════
+   BLUE THEME (MS-DOS EDIT.COM)
+   ═══════════════════════════════════════════════════ */
+[data-theme="blue"] {
+  --bg-primary: #0000AA;
+  --bg-secondary: #000088;
+  --bg-highlight: #00AAAA;
+  --bg-menu: #AAAAAA;
+  --bg-menu-highlight: #000000;
+  --bg-dialog: #AAAAAA;
+  --bg-dialog-shadow: #000000;
+  --bg-input: #0000AA;
+  --bg-scrollbar: #00AAAA;
+
+  --fg-primary: #FFFF55;
+  --fg-secondary: #AAAAAA;
+  --fg-menu: #000000;
+  --fg-menu-highlight: #FFFFFF;
+  --fg-menu-hotkey: #AA0000;
+  --fg-dialog: #000000;
+  --fg-disabled: #555555;
+  --fg-hotkey: #FFFFFF;
+  --fg-highlight: #000000;
+  --fg-title: #FFFFFF;
+  --fg-border: #FFFFFF;
+  --fg-favorite: #FFFF55;
+
+  --selection-bg: #00AAAA;
+  --selection-fg: #000000;
+
+  --border-color: #FFFFFF;
+  --border-dialog: #000000;
+  --shadow-color: #000055;
+
+  --crt-glow-color: rgba(170, 170, 255, 0.3);
+  --crt-scanline-color: rgba(0, 0, 0, 0.15);
+}
+
+/* ═══════════════════════════════════════════════════
+   BLACK & WHITE THEME
+   ═══════════════════════════════════════════════════ */
+[data-theme="bw"] {
+  --bg-primary: #000000;
+  --bg-secondary: #111111;
+  --bg-highlight: #AAAAAA;
+  --bg-menu: #AAAAAA;
+  --bg-menu-highlight: #000000;
+  --bg-dialog: #AAAAAA;
+  --bg-dialog-shadow: #333333;
+  --bg-input: #000000;
+  --bg-scrollbar: #555555;
+
+  --fg-primary: #FFFFFF;
+  --fg-secondary: #AAAAAA;
+  --fg-menu: #000000;
+  --fg-menu-highlight: #FFFFFF;
+  --fg-menu-hotkey: #333333;
+  --fg-dialog: #000000;
+  --fg-disabled: #555555;
+  --fg-hotkey: #FFFFFF;
+  --fg-highlight: #000000;
+  --fg-title: #FFFFFF;
+  --fg-border: #AAAAAA;
+  --fg-favorite: #FFFFFF;
+
+  --selection-bg: #AAAAAA;
+  --selection-fg: #000000;
+
+  --border-color: #AAAAAA;
+  --border-dialog: #000000;
+  --shadow-color: #333333;
+
+  --crt-glow-color: rgba(255, 255, 255, 0.15);
+  --crt-scanline-color: rgba(0, 0, 0, 0.2);
+}
+
+/* ═══════════════════════════════════════════════════
+   AMBER PHOSPHOR THEME
+   ═══════════════════════════════════════════════════ */
+[data-theme="amber"] {
+  --bg-primary: #1A0A00;
+  --bg-secondary: #150800;
+  --bg-highlight: #AA5500;
+  --bg-menu: #AA6600;
+  --bg-menu-highlight: #1A0A00;
+  --bg-dialog: #AA6600;
+  --bg-dialog-shadow: #0A0500;
+  --bg-input: #1A0A00;
+  --bg-scrollbar: #553300;
+
+  --fg-primary: #FFAA00;
+  --fg-secondary: #AA7700;
+  --fg-menu: #1A0A00;
+  --fg-menu-highlight: #FFDD00;
+  --fg-menu-hotkey: #553300;
+  --fg-dialog: #1A0A00;
+  --fg-disabled: #553300;
+  --fg-hotkey: #FFDD00;
+  --fg-highlight: #1A0A00;
+  --fg-title: #FFDD00;
+  --fg-border: #AA7700;
+  --fg-favorite: #FFDD00;
+
+  --selection-bg: #AA5500;
+  --selection-fg: #FFDD00;
+
+  --border-color: #AA7700;
+  --border-dialog: #553300;
+  --shadow-color: #0A0500;
+
+  --crt-glow-color: rgba(255, 170, 0, 0.4);
+  --crt-scanline-color: rgba(0, 0, 0, 0.2);
+}
+
+/* ═══════════════════════════════════════════════════
+   GREEN PHOSPHOR THEME
+   ═══════════════════════════════════════════════════ */
+[data-theme="green"] {
+  --bg-primary: #001A00;
+  --bg-secondary: #001500;
+  --bg-highlight: #00AA00;
+  --bg-menu: #00AA00;
+  --bg-menu-highlight: #001A00;
+  --bg-dialog: #00AA00;
+  --bg-dialog-shadow: #000A00;
+  --bg-input: #001A00;
+  --bg-scrollbar: #005500;
+
+  --fg-primary: #00FF00;
+  --fg-secondary: #00AA00;
+  --fg-menu: #001A00;
+  --fg-menu-highlight: #00FF00;
+  --fg-menu-hotkey: #005500;
+  --fg-dialog: #001A00;
+  --fg-disabled: #005500;
+  --fg-hotkey: #00FF00;
+  --fg-highlight: #001A00;
+  --fg-title: #00FF00;
+  --fg-border: #00AA00;
+  --fg-favorite: #00FF00;
+
+  --selection-bg: #00AA00;
+  --selection-fg: #001A00;
+
+  --border-color: #00AA00;
+  --border-dialog: #005500;
+  --shadow-color: #000A00;
+
+  --crt-glow-color: rgba(0, 255, 0, 0.35);
+  --crt-scanline-color: rgba(0, 0, 0, 0.2);
+}

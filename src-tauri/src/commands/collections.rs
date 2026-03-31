@@ -1,0 +1,81 @@
+use std::path::Path;
+use tauri::State;
+
+use crate::models::CollectionInfo;
+use crate::state::AppState;
+use crate::xml::parser;
+
+#[tauri::command]
+pub fn scan_collection(
+    state: State<AppState>,
+    name: String,
+    path: String,
+) -> Result<usize, String> {
+    // Validate path
+    let platforms_dir = Path::new(&path).join("Data").join("Platforms");
+    if !platforms_dir.exists() {
+        return Err(format!(
+            "Invalid eXo collection: Data/Platforms/ not found in {}",
+            path
+        ));
+    }
+
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+
+    // Upsert collection
+    db.execute(
+        "INSERT INTO collections (name, path, last_scanned) VALUES (?1, ?2, strftime('%s', 'now'))
+         ON CONFLICT(path) DO UPDATE SET name = ?1, last_scanned = strftime('%s', 'now')",
+        rusqlite::params![name, path],
+    )
+    .map_err(|e| e.to_string())?;
+
+    let collection_id: i64 = db
+        .query_row(
+            "SELECT id FROM collections WHERE path = ?",
+            [&path],
+            |row| row.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+
+    // Scan XML files
+    let count = parser::scan_collection(&db, collection_id, &path, &mut |count, file| {
+        eprintln!("Scanning {}: {} games so far...", file, count);
+    })?;
+
+    Ok(count)
+}
+
+#[tauri::command]
+pub fn list_collections(state: State<AppState>) -> Result<Vec<CollectionInfo>, String> {
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let mut stmt = db
+        .prepare(
+            "SELECT c.id, c.name, c.path, COUNT(g.id) as game_count
+             FROM collections c
+             LEFT JOIN games g ON g.collection_id = c.id
+             GROUP BY c.id",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let collections = stmt
+        .query_map([], |row| {
+            Ok(CollectionInfo {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                path: row.get(2)?,
+                game_count: row.get(3)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(|e| e.to_string())?;
+
+    Ok(collections)
+}
+
+#[tauri::command]
+pub fn validate_collection_path(path: String) -> Result<bool, String> {
+    let platforms_dir = Path::new(&path).join("Data").join("Platforms");
+    Ok(platforms_dir.exists())
+}

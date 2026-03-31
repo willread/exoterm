@@ -1,0 +1,63 @@
+/* ═══════════════════════════════════════════════════
+   CRT SCREEN EFFECTS
+   ═══════════════════════════════════════════════════ */
+
+/* Scanlines overlay */
+[data-crt="true"] .crt-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+[data-crt="true"] .crt-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 1px,
+    var(--crt-scanline-color) 1px,
+    var(--crt-scanline-color) 2px
+  );
+  animation: crt-flicker 8s infinite;
+}
+
+/* Vignette effect - darkened edges */
+[data-crt="true"] .crt-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 60%,
+    rgba(0, 0, 0, 0.3) 100%
+  );
+}
+
+/* Phosphor glow on text */
+[data-crt="true"] body {
+  text-shadow:
+    0 0 2px var(--crt-glow-color),
+    0 0 5px var(--crt-glow-color);
+}
+
+/* Subtle screen curvature via border-radius on the app */
+[data-crt="true"] #root {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Very subtle flicker animation */
+@keyframes crt-flicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.97; }
+  92% { opacity: 0.98; }
+  93% { opacity: 1; }
+}
+
+/* No effects when CRT is off */
+[data-crt="false"] .crt-overlay {
+  display: none;
+}

@@ -1,0 +1,484 @@
+@font-face {
+  font-family: 'IBM VGA';
+  src: url('../fonts/Web437_IBM_VGA_9x16.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+:root {
+  --font-dos: 'IBM VGA', monospace;
+  --char-w: 9px;
+  --char-h: 16px;
+  --font-size: 16px;
+}
+
+body {
+  font-family: var(--font-dos);
+  font-size: var(--font-size);
+  line-height: var(--char-h);
+  background: var(--bg-primary);
+  color: var(--fg-primary);
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* ── Menu Bar ─────────────────────────────────── */
+.menu-bar {
+  display: flex;
+  background: var(--bg-menu);
+  color: var(--fg-menu);
+  height: var(--char-h);
+  line-height: var(--char-h);
+  padding: 0 1ch;
+  user-select: none;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 100;
+}
+
+.menu-bar__item {
+  padding: 0 1ch;
+  cursor: pointer;
+  position: relative;
+}
+
+.menu-bar__item:hover,
+.menu-bar__item--active {
+  background: var(--bg-menu-highlight);
+  color: var(--fg-menu-highlight);
+}
+
+.menu-bar__hotkey {
+  color: var(--fg-menu-hotkey);
+}
+
+.menu-bar__item--active .menu-bar__hotkey {
+  color: var(--fg-hotkey);
+}
+
+.menu-bar__title {
+  flex: 1;
+  text-align: center;
+  color: var(--fg-menu);
+}
+
+/* ── Dropdown Menu ────────────────────────────── */
+.dropdown {
+  position: absolute;
+  top: var(--char-h);
+  left: 0;
+  background: var(--bg-dialog);
+  color: var(--fg-dialog);
+  border: 1px solid var(--border-dialog);
+  box-shadow: 2px 2px 0 var(--bg-dialog-shadow);
+  min-width: 20ch;
+  z-index: 200;
+  padding: 1px 0;
+}
+
+.dropdown__item {
+  padding: 0 2ch;
+  cursor: pointer;
+  white-space: nowrap;
+  height: var(--char-h);
+  line-height: var(--char-h);
+  display: flex;
+  justify-content: space-between;
+}
+
+.dropdown__item:hover,
+.dropdown__item--active {
+  background: var(--bg-highlight);
+  color: var(--fg-highlight);
+}
+
+.dropdown__separator {
+  border-top: 1px solid var(--border-dialog);
+  margin: 1px 1ch;
+}
+
+.dropdown__shortcut {
+  margin-left: 3ch;
+  opacity: 0.7;
+}
+
+/* ── Main Content Area ────────────────────────── */
+.main-content {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Sidebar / Filters ────────────────────────── */
+.sidebar {
+  width: 26ch;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-color);
+  overflow-y: auto;
+}
+
+.sidebar__section {
+  padding: 0 1ch;
+}
+
+.sidebar__title {
+  color: var(--fg-title);
+  padding: 2px 0;
+  text-align: center;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar__item {
+  padding: 0 1ch;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  height: var(--char-h);
+  line-height: var(--char-h);
+}
+
+.sidebar__item:hover {
+  background: var(--bg-highlight);
+  color: var(--fg-highlight);
+}
+
+.sidebar__item--active {
+  background: var(--bg-highlight);
+  color: var(--fg-highlight);
+}
+
+/* ── Content Type Tabs ────────────────────────── */
+.content-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.content-tabs__tab {
+  padding: 0 1ch;
+  cursor: pointer;
+  color: var(--fg-secondary);
+  height: var(--char-h);
+  line-height: var(--char-h);
+}
+
+.content-tabs__tab:hover {
+  color: var(--fg-primary);
+}
+
+.content-tabs__tab--active {
+  background: var(--bg-primary);
+  color: var(--fg-title);
+}
+
+/* ── Game List ────────────────────────────────── */
+.game-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.game-list__header {
+  display: flex;
+  background: var(--bg-secondary);
+  color: var(--fg-title);
+  border-bottom: 1px solid var(--border-color);
+  height: var(--char-h);
+  line-height: var(--char-h);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.game-list__header-col {
+  padding: 0 1ch;
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.game-list__header-col:hover {
+  background: var(--bg-highlight);
+  color: var(--fg-highlight);
+}
+
+.game-list__body {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+}
+
+.game-list__row {
+  display: flex;
+  height: var(--char-h);
+  line-height: var(--char-h);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.game-list__row:hover {
+  background: var(--bg-secondary);
+}
+
+.game-list__row--selected {
+  background: var(--bg-highlight) !important;
+  color: var(--fg-highlight);
+}
+
+.game-list__col {
+  padding: 0 1ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.game-list__col--title { flex: 3; min-width: 20ch; }
+.game-list__col--year { width: 6ch; text-align: right; flex-shrink: 0; }
+.game-list__col--developer { flex: 2; min-width: 12ch; }
+.game-list__col--genre { flex: 2; min-width: 12ch; }
+.game-list__col--fav { width: 3ch; text-align: center; flex-shrink: 0; color: var(--fg-favorite); }
+
+.game-list__empty {
+  padding: 2ch;
+  text-align: center;
+  color: var(--fg-secondary);
+}
+
+.game-list__count {
+  height: var(--char-h);
+  line-height: var(--char-h);
+  padding: 0 1ch;
+  background: var(--bg-secondary);
+  color: var(--fg-secondary);
+  border-top: 1px solid var(--border-color);
+  flex-shrink: 0;
+  text-align: right;
+}
+
+/* ── Search Bar ───────────────────────────────── */
+.search-bar {
+  display: flex;
+  align-items: center;
+  height: var(--char-h);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.search-bar__label {
+  padding: 0 1ch;
+  color: var(--fg-title);
+}
+
+.search-bar__input {
+  flex: 1;
+  background: var(--bg-input);
+  color: var(--fg-primary);
+  padding: 0 1ch;
+  height: 100%;
+  border: none;
+  font-family: var(--font-dos);
+  font-size: var(--font-size);
+  caret-color: var(--fg-primary);
+}
+
+/* ── Detail Panel ─────────────────────────────── */
+.detail-panel {
+  width: 36ch;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border-color);
+  overflow-y: auto;
+  padding: 0;
+}
+
+.detail-panel__title {
+  background: var(--bg-secondary);
+  color: var(--fg-title);
+  padding: 2px 1ch;
+  text-align: center;
+  border-bottom: 1px solid var(--border-color);
+  word-wrap: break-word;
+  white-space: normal;
+}
+
+.detail-panel__field {
+  padding: 0 1ch;
+  display: flex;
+}
+
+.detail-panel__label {
+  color: var(--fg-secondary);
+  width: 12ch;
+  flex-shrink: 0;
+}
+
+.detail-panel__value {
+  color: var(--fg-primary);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.detail-panel__overview {
+  padding: 1ch;
+  color: var(--fg-secondary);
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  max-height: 20ch;
+  overflow-y: auto;
+  border-top: 1px solid var(--border-color);
+  font-size: var(--font-size);
+  line-height: var(--char-h);
+}
+
+.detail-panel__empty {
+  padding: 2ch;
+  text-align: center;
+  color: var(--fg-disabled);
+}
+
+/* ── Dialog ───────────────────────────────────── */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+}
+
+.dialog {
+  background: var(--bg-dialog);
+  color: var(--fg-dialog);
+  border: 2px solid var(--border-dialog);
+  box-shadow: 4px 4px 0 var(--bg-dialog-shadow);
+  min-width: 40ch;
+  max-width: 70ch;
+  position: relative;
+}
+
+.dialog__title {
+  text-align: center;
+  padding: 2px 2ch;
+  background: var(--bg-highlight);
+  color: var(--fg-highlight);
+  font-weight: normal;
+}
+
+.dialog__body {
+  padding: 1ch 2ch;
+}
+
+.dialog__footer {
+  display: flex;
+  justify-content: center;
+  gap: 2ch;
+  padding: 1ch 2ch;
+}
+
+.dialog__button {
+  padding: 0 2ch;
+  background: var(--bg-menu);
+  color: var(--fg-menu);
+  cursor: pointer;
+  border: 1px solid var(--border-dialog);
+  height: calc(var(--char-h) + 2px);
+  line-height: var(--char-h);
+  font-family: var(--font-dos);
+  font-size: var(--font-size);
+}
+
+.dialog__button:hover,
+.dialog__button--active {
+  background: var(--bg-highlight);
+  color: var(--fg-highlight);
+}
+
+.dialog__input {
+  width: 100%;
+  background: var(--bg-input);
+  color: var(--fg-primary);
+  border: 1px solid var(--border-dialog);
+  padding: 0 1ch;
+  height: var(--char-h);
+  font-family: var(--font-dos);
+  font-size: var(--font-size);
+}
+
+/* ── Status Bar ───────────────────────────────── */
+.status-bar {
+  display: flex;
+  background: var(--bg-menu);
+  color: var(--fg-menu);
+  height: var(--char-h);
+  line-height: var(--char-h);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.status-bar__item {
+  padding: 0 1ch;
+  white-space: nowrap;
+}
+
+.status-bar__hotkey {
+  color: var(--fg-menu-hotkey);
+}
+
+.status-bar__spacer {
+  flex: 1;
+}
+
+.status-bar__info {
+  padding: 0 1ch;
+  color: var(--fg-menu);
+}
+
+/* ── Scrollbar Styling ────────────────────────── */
+::-webkit-scrollbar {
+  width: var(--char-w);
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-scrollbar);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--bg-highlight);
+}
+
+/* ── Progress Bar ─────────────────────────────── */
+.progress-bar {
+  width: 100%;
+  height: var(--char-h);
+  background: var(--bg-secondary);
+  position: relative;
+}
+
+.progress-bar__fill {
+  height: 100%;
+  background: var(--bg-highlight);
+  transition: width 0.1s;
+}
+
+.progress-bar__text {
+  position: absolute;
+  inset: 0;
+  text-align: center;
+  line-height: var(--char-h);
+  color: var(--fg-primary);
+}
