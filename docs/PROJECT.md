@@ -6,8 +6,9 @@ A DOS-style alternate frontend for eXo collections (eXoDOS, eXoWin9x, etc.) buil
 
 ### Aesthetic
 - **MS-DOS EDIT.COM look**: Blue background, menu bar at top, status bar at bottom, box-drawing borders
+- **Custom titlebar**: Native window decorations disabled; menu bar serves as draggable titlebar with DOS-style window controls (_, box, X) at top right
 - **4 themes**: Blue (default EDIT.COM), Black & White, Amber Phosphor, Green Phosphor
-- **CRT effects**: Scanlines, phosphor glow, vignette - toggleable via Options menu
+- **CRT effects**: Dramatic fullscreen shader — thick scanlines, heavy vignette, RGB sub-pixel simulation, screen curvature via perspective transform, phosphor glow, screen jitter, and a turn-on animation. Toggleable via Options menu
 - **IBM VGA 9x16 font**: Authentic DOS typography from int10h.org oldschool PC font pack
 
 ### Architecture
@@ -82,4 +83,4 @@ A DOS-style alternate frontend for eXo collections (eXoDOS, eXoWin9x, etc.) buil
 | `Up/Down` | Navigate list |
 | `PgUp/PgDn` | Page through list |
 | `Home/End` | Jump to first/last |
-| `Alt+F/V/O/H` | Open menus |
+| `Alt+F/O/H` | Open menus |

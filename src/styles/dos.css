@@ -56,12 +56,18 @@ body {
   flex-shrink: 0;
   position: relative;
   z-index: 100;
+  /* Entire bar is draggable by default; items opt out */
+  -webkit-app-region: drag;
+  app-region: drag;
 }
 
 .menu-bar__item {
   padding: 0 1ch;
   cursor: pointer;
   position: relative;
+  /* Menu items are clickable, not draggable */
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
 }
 
 .menu-bar__item:hover,
@@ -82,6 +88,36 @@ body {
   flex: 1;
   text-align: center;
   color: var(--fg-menu);
+  /* Title area is the main drag region for the custom titlebar */
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+/* ── Window Controls (custom titlebar) ───────── */
+.menu-bar__controls {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.menu-bar__control {
+  width: 3ch;
+  text-align: center;
+  cursor: pointer;
+  height: var(--char-h);
+  line-height: var(--char-h);
+}
+
+.menu-bar__control:hover {
+  background: var(--bg-menu-highlight);
+  color: var(--fg-menu-highlight);
+}
+
+.menu-bar__control--close:hover {
+  background: #AA0000;
+  color: #FFFFFF;
 }
 
 /* ── Dropdown Menu ────────────────────────────── */

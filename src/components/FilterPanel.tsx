@@ -75,11 +75,12 @@ function applyYearFilter(value: number) {
   setSelectedIndex(0);
 }
 
-type SectionKey = "platform" | "genre" | "year" | "developer" | "publisher" | "series";
+type SectionKey = "contentType" | "platform" | "genre" | "year" | "developer" | "publisher" | "series";
 
 // ── Main component ────────────────────────────────────────────────────────────
 export const FilterPanel: Component = () => {
   const [sectionOpen, setSectionOpen] = createStore<Record<SectionKey, boolean>>({
+    contentType: true,
     platform: true,
     genre: false,
     year: false,
@@ -139,40 +140,56 @@ export const FilterPanel: Component = () => {
 
   return (
     <div class="sidebar" tabindex="-1">
-      {/* Content Type selector */}
+      {/* Reset Filters button — always at the very top */}
+      <div
+        class={`sidebar__reset-btn${hasActiveFilters() ? "" : " sidebar__reset-btn--disabled"}`}
+        onClick={() => { if (hasActiveFilters()) resetAllFilters(); }}
+      >
+        Reset Filters
+      </div>
+
+      {/* Content Type selector — collapsible */}
       <Show when={opts().content_types.length > 0}>
-        <div class="sidebar__section-header sidebar__section-header--top">
-          Type
+        <div
+          class="sidebar__section-header"
+          onClick={() => setSectionOpen("contentType", (v) => !v)}
+        >
+          <span class="sidebar__section-arrow">
+            {sectionOpen.contentType ? "\u25BC" : "\u25B2"}
+          </span>
+          {" "}{sectionLabel("Type", filters.contentType || null)}
         </div>
-        <div class="sidebar__section">
-          <div
-            class={`sidebar__item ${filters.contentType === "" ? "sidebar__item--active" : ""}`}
-            onClick={() => {
-              setFilters("contentType", "");
-              setFilters("offset", 0);
-              setSelectedIndex(0);
-            }}
-          >
-            All
+        <Show when={sectionOpen.contentType}>
+          <div class="sidebar__section">
+            <div
+              class={`sidebar__item ${filters.contentType === "" ? "sidebar__item--active" : ""}`}
+              onClick={() => {
+                setFilters("contentType", "");
+                setFilters("offset", 0);
+                setSelectedIndex(0);
+              }}
+            >
+              All
+            </div>
+            <For each={opts().content_types}>
+              {(ct) => (
+                <div
+                  class={`sidebar__item ${filters.contentType === ct ? "sidebar__item--active" : ""}`}
+                  onClick={() => {
+                    setFilters("contentType", filters.contentType === ct ? "" : ct);
+                    setFilters("offset", 0);
+                    setSelectedIndex(0);
+                  }}
+                >
+                  {ct}
+                </div>
+              )}
+            </For>
           </div>
-          <For each={opts().content_types}>
-            {(ct) => (
-              <div
-                class={`sidebar__item ${filters.contentType === ct ? "sidebar__item--active" : ""}`}
-                onClick={() => {
-                  setFilters("contentType", filters.contentType === ct ? "" : ct);
-                  setFilters("offset", 0);
-                  setSelectedIndex(0);
-                }}
-              >
-                {ct}
-              </div>
-            )}
-          </For>
-        </div>
+        </Show>
       </Show>
 
-      {/* Favorites toggle */}
+      {/* Favorites toggle — no icon */}
       <div
         class={`sidebar__section-header${filters.favoritesOnly ? " sidebar__section-header--active" : ""}`}
         onClick={() => {
@@ -181,15 +198,7 @@ export const FilterPanel: Component = () => {
           setSelectedIndex(0);
         }}
       >
-        {filters.favoritesOnly ? "\u2605" : "\u2606"} Favorites
-      </div>
-
-      {/* Reset Filters button */}
-      <div
-        class={`sidebar__reset-btn${hasActiveFilters() ? "" : " sidebar__reset-btn--disabled"}`}
-        onClick={() => { if (hasActiveFilters()) resetAllFilters(); }}
-      >
-        Reset Filters
+        Favorites
       </div>
 
       {/* Platform section */}

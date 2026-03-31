@@ -6,8 +6,6 @@ import {
   setActiveMenu,
   activeDialog,
   setActiveDialog,
-  filters,
-  setFilters,
   theme,
   setTheme,
   crtEnabled,
@@ -21,9 +19,6 @@ beforeEach(() => {
   setActiveDialog(null);
   setTheme("blue");
   setCrtEnabled(true);
-  setFilters("favoritesOnly", false);
-  setFilters("sortBy", "title");
-  setFilters("sortDir", "asc");
   // Reset data-theme attribute
   document.documentElement.setAttribute("data-theme", "blue");
 });
@@ -44,12 +39,11 @@ describe("MenuBar rendering", () => {
     );
   });
 
-  it("renders all four menu labels", () => {
+  it("renders all three menu labels", () => {
     dispose = render(() => <MenuBar />, document.body);
     const items = document.querySelectorAll(".menu-bar__item");
     const texts = Array.from(items).map((i) => i.textContent?.trim());
     expect(texts.some((t) => t?.includes("ile"))).toBe(true); // "File"
-    expect(texts.some((t) => t?.includes("iew"))).toBe(true); // "View"
     expect(texts.some((t) => t?.includes("ptions"))).toBe(true); // "Options"
     expect(texts.some((t) => t?.includes("elp"))).toBe(true); // "Help"
   });
@@ -83,13 +77,13 @@ describe("MenuBar dropdown toggle", () => {
     dispose = render(() => <MenuBar />, document.body);
     const items = Array.from(document.querySelectorAll(".menu-bar__item"));
     const fileItem = items.find((i) => i.textContent?.includes("ile")) as HTMLElement;
-    const viewItem = items.find((i) => i.textContent?.includes("iew")) as HTMLElement;
+    const optionsItem = items.find((i) => i.textContent?.includes("ptions")) as HTMLElement;
 
     fileItem.click();
     expect(activeMenu()).toBe("file");
 
-    viewItem.click();
-    expect(activeMenu()).toBe("view");
+    optionsItem.click();
+    expect(activeMenu()).toBe("options");
   });
 
   it("clicking outside the menu bar closes the open dropdown", () => {
@@ -148,73 +142,6 @@ describe("MenuBar File menu", () => {
     ) as HTMLElement;
     addItem.click();
     expect(activeDialog()).toBe("collections");
-    expect(activeMenu()).toBeNull();
-  });
-});
-
-// ── View menu items ────────────────────────────────────────────────────────────
-
-describe("MenuBar View menu", () => {
-  function openViewMenu() {
-    const viewItem = Array.from(document.querySelectorAll(".menu-bar__item")).find((i) =>
-      i.textContent?.includes("iew")
-    ) as HTMLElement;
-    viewItem.click();
-  }
-
-  it("'Favorites Only' toggles favoritesOnly from false to true", () => {
-    setFilters("favoritesOnly", false);
-    dispose = render(() => <MenuBar />, document.body);
-    openViewMenu();
-    const favItem = Array.from(document.querySelectorAll(".dropdown__item")).find((i) =>
-      i.textContent?.includes("Favorites Only")
-    ) as HTMLElement;
-    favItem.click();
-    expect(filters.favoritesOnly).toBe(true);
-  });
-
-  it("'Favorites Only' toggles favoritesOnly from true to false", () => {
-    setFilters("favoritesOnly", true);
-    dispose = render(() => <MenuBar />, document.body);
-    openViewMenu();
-    const favItem = Array.from(document.querySelectorAll(".dropdown__item")).find((i) =>
-      i.textContent?.includes("Favorites Only")
-    ) as HTMLElement;
-    favItem.click();
-    expect(filters.favoritesOnly).toBe(false);
-  });
-
-  it("'Sort by Title' sets sortBy to 'title'", () => {
-    setFilters("sortBy", "year");
-    dispose = render(() => <MenuBar />, document.body);
-    openViewMenu();
-    const sortItem = Array.from(document.querySelectorAll(".dropdown__item")).find((i) =>
-      i.textContent?.includes("Sort by Title")
-    ) as HTMLElement;
-    sortItem.click();
-    expect(filters.sortBy).toBe("title");
-    expect(activeMenu()).toBeNull();
-  });
-
-  it("'Sort by Year' sets sortBy to 'year'", () => {
-    dispose = render(() => <MenuBar />, document.body);
-    openViewMenu();
-    const sortItem = Array.from(document.querySelectorAll(".dropdown__item")).find((i) =>
-      i.textContent?.includes("Sort by Year")
-    ) as HTMLElement;
-    sortItem.click();
-    expect(filters.sortBy).toBe("year");
-    expect(activeMenu()).toBeNull();
-  });
-
-  it("'Sort by Developer' sets sortBy to 'developer'", () => {
-    dispose = render(() => <MenuBar />, document.body);
-    openViewMenu();
-    const sortItem = Array.from(document.querySelectorAll(".dropdown__item")).find((i) =>
-      i.textContent?.includes("Sort by Developer")
-    ) as HTMLElement;
-    sortItem.click();
-    expect(filters.sortBy).toBe("developer");
     expect(activeMenu()).toBeNull();
   });
 });

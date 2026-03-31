@@ -169,13 +169,6 @@ const App: Component = () => {
     });
 
     registerKey({
-      key: "v",
-      alt: true,
-      context: "global",
-      handler: () => setActiveMenu(activeMenu() === "view" ? null : "view"),
-    });
-
-    registerKey({
       key: "o",
       alt: true,
       context: "global",
@@ -198,7 +191,7 @@ const App: Component = () => {
 
   return (
     <>
-      <div class="crt-overlay" />
+      <div class="crt-overlay"><div class="crt-rgb" /></div>
       <MenuBar />
       <SearchBar />
       <div class="main-content">

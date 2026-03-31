@@ -1,5 +1,5 @@
 import { Component, Show, onMount, onCleanup } from "solid-js";
-import { activeMenu, setActiveMenu, setActiveDialog, filters, setFilters, theme, setTheme, crtEnabled, setCrtEnabled, fontSize, setFontSize } from "../lib/store";
+import { activeMenu, setActiveMenu, setActiveDialog, theme, setTheme, crtEnabled, setCrtEnabled, fontSize, setFontSize } from "../lib/store";
 import type { Theme } from "../lib/types";
 
 const THEMES: { label: string; value: Theme }[] = [
@@ -36,8 +36,32 @@ export const MenuBar: Component = () => {
     closeMenu();
   };
 
+  const handleMinimize = () => {
+    import("@tauri-apps/api/window")
+      .then(m => m.getCurrentWindow().minimize())
+      .catch(console.error);
+  };
+
+  const handleMaximize = () => {
+    import("@tauri-apps/api/window")
+      .then(m => {
+        const win = m.getCurrentWindow();
+        win.isMaximized().then(maximized => {
+          if (maximized) win.unmaximize();
+          else win.maximize();
+        });
+      })
+      .catch(console.error);
+  };
+
+  const handleClose = () => {
+    import("@tauri-apps/api/window")
+      .then(m => m.getCurrentWindow().close())
+      .catch(console.error);
+  };
+
   return (
-    <div class="menu-bar no-select" ref={menuBarRef}>
+    <div class="menu-bar no-select" ref={menuBarRef} data-tauri-drag-region>
       {/* File */}
       <div
         class={`menu-bar__item ${activeMenu() === "file" ? "menu-bar__item--active" : ""}`}
@@ -53,38 +77,8 @@ export const MenuBar: Component = () => {
               Add Collection...
             </div>
             <div class="dropdown__separator" />
-            <div class="dropdown__item" onClick={() => {
-              closeMenu();
-              import("@tauri-apps/api/window")
-                .then(m => m.getCurrentWindow().close())
-                .catch(e => console.error("Failed to close window:", e));
-            }}>
+            <div class="dropdown__item" onClick={() => { handleClose(); closeMenu(); }}>
               Exit <span class="dropdown__shortcut">Alt+F4</span>
-            </div>
-          </div>
-        </Show>
-      </div>
-
-      {/* View */}
-      <div
-        class={`menu-bar__item ${activeMenu() === "view" ? "menu-bar__item--active" : ""}`}
-        onClick={() => toggleMenu("view")}
-      >
-        <span class="menu-bar__hotkey">V</span>iew
-        <Show when={activeMenu() === "view"}>
-          <div class="dropdown">
-            <div class="dropdown__item" onClick={() => { setFilters("favoritesOnly", !filters.favoritesOnly); closeMenu(); }}>
-              Favorites Only
-            </div>
-            <div class="dropdown__separator" />
-            <div class="dropdown__item" onClick={() => { setFilters("sortBy", "title"); closeMenu(); }}>
-              Sort by Title
-            </div>
-            <div class="dropdown__item" onClick={() => { setFilters("sortBy", "year"); closeMenu(); }}>
-              Sort by Year
-            </div>
-            <div class="dropdown__item" onClick={() => { setFilters("sortBy", "developer"); closeMenu(); }}>
-              Sort by Developer
             </div>
           </div>
         </Show>
@@ -140,8 +134,15 @@ export const MenuBar: Component = () => {
         </Show>
       </div>
 
-      {/* Center title */}
-      <div class="menu-bar__title">eXo Terminal</div>
+      {/* Center title — draggable area */}
+      <div class="menu-bar__title" data-tauri-drag-region>eXo Terminal</div>
+
+      {/* Window controls — DOS-style */}
+      <div class="menu-bar__controls">
+        <div class="menu-bar__control" onClick={handleMinimize} title="Minimize">_</div>
+        <div class="menu-bar__control" onClick={handleMaximize} title="Maximize">{"\u25A1"}</div>
+        <div class="menu-bar__control menu-bar__control--close" onClick={handleClose} title="Close">X</div>
+      </div>
     </div>
   );
 };
