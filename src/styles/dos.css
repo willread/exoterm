@@ -161,10 +161,11 @@ body {
 
 /* ── Sidebar / Filters ────────────────────────── */
 .sidebar {
-  width: 26ch;
+  width: 100%;
   flex-shrink: 0;
   border-right: 1px solid var(--border-color);
   overflow-y: auto;
+  overflow-x: hidden;
   height: 100%;
 }
 
@@ -190,7 +191,7 @@ body {
 }
 
 .sidebar__section-arrow {
-  font-size: 0.7em;
+  /* Same size as game-list column header sort arrows */
 }
 
 .sidebar__group-header {
