@@ -1,5 +1,5 @@
 import { Component, Show, onMount, onCleanup } from "solid-js";
-import { activeMenu, setActiveMenu, setActiveDialog, filters, setFilters, theme, setTheme, crtEnabled, setCrtEnabled } from "../lib/store";
+import { activeMenu, setActiveMenu, setActiveDialog, filters, setFilters, theme, setTheme, crtEnabled, setCrtEnabled, fontSize, setFontSize } from "../lib/store";
 import type { Theme } from "../lib/types";
 
 const THEMES: { label: string; value: Theme }[] = [
@@ -103,6 +103,23 @@ export const MenuBar: Component = () => {
             </div>
             <div class="dropdown__item" onClick={() => { setCrtEnabled(!crtEnabled()); closeMenu(); }}>
               CRT Effects: {crtEnabled() ? "ON" : "OFF"}
+            </div>
+            <div class="dropdown__separator" />
+            <div class="dropdown__item" onClick={() => {
+              const next = Math.min(fontSize() + 2, 24);
+              setFontSize(next);
+              document.documentElement.style.setProperty("--font-size", next + "px");
+              document.documentElement.style.setProperty("--char-h", next + "px");
+            }}>
+              Zoom In (+)
+            </div>
+            <div class="dropdown__item" onClick={() => {
+              const next = Math.max(fontSize() - 2, 10);
+              setFontSize(next);
+              document.documentElement.style.setProperty("--font-size", next + "px");
+              document.documentElement.style.setProperty("--char-h", next + "px");
+            }}>
+              Zoom Out (-)
             </div>
           </div>
         </Show>

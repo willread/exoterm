@@ -7,6 +7,7 @@ import type { ChoicePayload, ContentType, SortDir, SortField, Theme, GameSummary
 export const [theme, setTheme] = createSignal<Theme>("blue");
 export const [crtEnabled, setCrtEnabled] = createSignal(true);
 export const [activePanel, setActivePanel] = createSignal<"sidebar" | "list" | "detail">("list");
+export const [fontSize, setFontSize] = createSignal(16); // px, default 16
 
 // ── Dialog state ───────────────────────────────
 export const [activeDialog, setActiveDialog] = createSignal<string | null>(null);

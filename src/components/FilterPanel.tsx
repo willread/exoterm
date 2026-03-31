@@ -1,4 +1,4 @@
-import { Component, For, Show } from "solid-js";
+import { Component, For, Show, createSignal } from "solid-js";
 import {
   filters,
   setFilters,
@@ -16,6 +16,50 @@ const CONTENT_TYPES: { label: string; value: ContentType | "" }[] = [
   { label: "Videos", value: "Video" },
   { label: "Catalogs", value: "Catalog" },
 ];
+
+/** A collapsible sidebar section that shows all items. */
+const FilterSection: Component<{
+  title: string;
+  items: any[];
+  activeValue: any;
+  filterField: string;
+  onSet: (field: string, value: any) => void;
+  onClear: (field: string) => void;
+}> = (props) => {
+  const [collapsed, setCollapsed] = createSignal(false);
+
+  return (
+    <Show when={props.items.length > 0}>
+      <div
+        class="sidebar__title"
+        onClick={() => setCollapsed(!collapsed())}
+      >
+        <span class="sidebar__toggle">{collapsed() ? "\u25B6" : "\u25BC"}</span>
+        {" "}{props.title} ({props.items.length})
+        <Show when={props.activeValue}>
+          {" "}[<span
+            class="sidebar__clear"
+            onClick={(e) => { e.stopPropagation(); props.onClear(props.filterField); }}
+          >x</span>]
+        </Show>
+      </div>
+      <Show when={!collapsed()}>
+        <div class="sidebar__section">
+          <For each={props.items}>
+            {(item) => (
+              <div
+                class={`sidebar__item ${props.activeValue === item ? "sidebar__item--active" : ""}`}
+                onClick={() => props.onSet(props.filterField, item)}
+              >
+                {item}
+              </div>
+            )}
+          </For>
+        </div>
+      </Show>
+    </Show>
+  );
+};
 
 export const FilterPanel: Component = () => {
   const clearFilter = (field: string) => {
@@ -52,115 +96,59 @@ export const FilterPanel: Component = () => {
         </For>
       </div>
 
-      {/* Platform filter */}
-      <Show when={opts().platforms.length > 1}>
-        <div class="sidebar__title">
-          Platform
-          <Show when={filters.platform}>
-            {" "}[<span style="cursor:pointer" onClick={() => clearFilter("platform")}>x</span>]
-          </Show>
-        </div>
-        <div class="sidebar__section">
-          <For each={opts().platforms.slice(0, 30)}>
-            {(p) => (
-              <div
-                class={`sidebar__item ${filters.platform === p ? "sidebar__item--active" : ""}`}
-                onClick={() => setFilter("platform", p)}
-              >
-                {p}
-              </div>
-            )}
-          </For>
-        </div>
-      </Show>
+      <FilterSection
+        title="Platform"
+        items={opts().platforms}
+        activeValue={filters.platform}
+        filterField="platform"
+        onSet={setFilter}
+        onClear={clearFilter}
+      />
 
-      {/* Genre filter */}
-      <Show when={opts().genres.length > 0}>
-        <div class="sidebar__title">
-          Genre
-          <Show when={filters.genre}>
-            {" "}[<span style="cursor:pointer" onClick={() => clearFilter("genre")}>x</span>]
-          </Show>
-        </div>
-        <div class="sidebar__section">
-          <For each={opts().genres.slice(0, 30)}>
-            {(g) => (
-              <div
-                class={`sidebar__item ${filters.genre === g ? "sidebar__item--active" : ""}`}
-                onClick={() => setFilter("genre", g)}
-              >
-                {g}
-              </div>
-            )}
-          </For>
-        </div>
-      </Show>
+      <FilterSection
+        title="Genre"
+        items={opts().genres}
+        activeValue={filters.genre}
+        filterField="genre"
+        onSet={setFilter}
+        onClear={clearFilter}
+      />
 
-      {/* Year filter */}
-      <Show when={opts().years.length > 0}>
-        <div class="sidebar__title">
-          Year
-          <Show when={filters.year}>
-            {" "}[<span style="cursor:pointer" onClick={() => clearFilter("year")}>x</span>]
-          </Show>
-        </div>
-        <div class="sidebar__section">
-          <For each={opts().years.slice(-20)}>
-            {(y) => (
-              <div
-                class={`sidebar__item ${filters.year === y ? "sidebar__item--active" : ""}`}
-                onClick={() => setFilter("year", y)}
-              >
-                {y}
-              </div>
-            )}
-          </For>
-        </div>
-      </Show>
+      <FilterSection
+        title="Year"
+        items={opts().years}
+        activeValue={filters.year}
+        filterField="year"
+        onSet={setFilter}
+        onClear={clearFilter}
+      />
 
-      {/* Developer filter */}
-      <Show when={opts().developers.length > 0}>
-        <div class="sidebar__title">
-          Developer
-          <Show when={filters.developer}>
-            {" "}[<span style="cursor:pointer" onClick={() => clearFilter("developer")}>x</span>]
-          </Show>
-        </div>
-        <div class="sidebar__section">
-          <For each={opts().developers.slice(0, 30)}>
-            {(d) => (
-              <div
-                class={`sidebar__item ${filters.developer === d ? "sidebar__item--active" : ""}`}
-                onClick={() => setFilter("developer", d)}
-              >
-                {d}
-              </div>
-            )}
-          </For>
-        </div>
-      </Show>
+      <FilterSection
+        title="Developer"
+        items={opts().developers}
+        activeValue={filters.developer}
+        filterField="developer"
+        onSet={setFilter}
+        onClear={clearFilter}
+      />
 
-      {/* Publisher filter */}
-      <Show when={opts().publishers.length > 0}>
-        <div class="sidebar__title">
-          Publisher
-          <Show when={filters.publisher}>
-            {" "}[<span style="cursor:pointer" onClick={() => clearFilter("publisher")}>x</span>]
-          </Show>
-        </div>
-        <div class="sidebar__section">
-          <For each={opts().publishers.slice(0, 30)}>
-            {(p) => (
-              <div
-                class={`sidebar__item ${filters.publisher === p ? "sidebar__item--active" : ""}`}
-                onClick={() => setFilter("publisher", p)}
-              >
-                {p}
-              </div>
-            )}
-          </For>
-        </div>
-      </Show>
+      <FilterSection
+        title="Publisher"
+        items={opts().publishers}
+        activeValue={filters.publisher}
+        filterField="publisher"
+        onSet={setFilter}
+        onClear={clearFilter}
+      />
+
+      <FilterSection
+        title="Series"
+        items={opts().series}
+        activeValue={filters.series}
+        filterField="series"
+        onSet={setFilter}
+        onClear={clearFilter}
+      />
     </div>
   );
 };

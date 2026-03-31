@@ -1,6 +1,7 @@
-import { Component, Show, createResource, createSignal, createEffect } from "solid-js";
-import { selectedGame } from "../lib/store";
-import { getGameImages } from "../lib/commands";
+import { Component, Show, createResource, createSignal } from "solid-js";
+import { selectedGame, gameList, selectedIndex } from "../lib/store";
+import { getGameImages, launchGame } from "../lib/commands";
+import { guardedLaunch } from "../lib/keyboard";
 import type { GameImage } from "../lib/commands";
 
 /** Quantize each RGB channel to 6-bit precision (VGA DAC), giving a 256-color-era look. */
@@ -14,7 +15,6 @@ function applyVgaQuantize(img: HTMLImageElement): string {
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
   for (let i = 0; i < data.length; i += 4) {
-    // Round each channel to nearest multiple of 4 (6-bit precision: 0-252 in steps of 4)
     data[i] = Math.round(data[i] / 4) * 4;
     data[i + 1] = Math.round(data[i + 1] / 4) * 4;
     data[i + 2] = Math.round(data[i + 2] / 4) * 4;
@@ -57,6 +57,14 @@ export const DetailPanel: Component = () => {
 
   const boxArt = () => images()?.[0] ?? null;
 
+  const handlePlay = () => {
+    const games = gameList();
+    const idx = selectedIndex();
+    if (games[idx]) {
+      guardedLaunch(() => launchGame(games[idx].id));
+    }
+  };
+
   return (
     <div class="detail-panel" tabindex="-1">
       <Show
@@ -87,72 +95,82 @@ export const DetailPanel: Component = () => {
               </div>
             </Show>
 
-            <Show when={g().platform}>
-              <div class="detail-panel__field">
-                <span class="detail-panel__label">Platform:</span>
-                <span class="detail-panel__value">{g().platform}</span>
-              </div>
-            </Show>
+            {/* Metadata — scrollable middle section */}
+            <div class="detail-panel__info">
+              <Show when={g().platform}>
+                <div class="detail-panel__field">
+                  <span class="detail-panel__label">Platform:</span>
+                  <span class="detail-panel__value">{g().platform}</span>
+                </div>
+              </Show>
 
-            <Show when={g().release_year}>
-              <div class="detail-panel__field">
-                <span class="detail-panel__label">Year:</span>
-                <span class="detail-panel__value">{g().release_year}</span>
-              </div>
-            </Show>
+              <Show when={g().release_year}>
+                <div class="detail-panel__field">
+                  <span class="detail-panel__label">Year:</span>
+                  <span class="detail-panel__value">{g().release_year}</span>
+                </div>
+              </Show>
 
-            <Show when={g().developer}>
-              <div class="detail-panel__field">
-                <span class="detail-panel__label">Developer:</span>
-                <span class="detail-panel__value">{g().developer}</span>
-              </div>
-            </Show>
+              <Show when={g().developer}>
+                <div class="detail-panel__field">
+                  <span class="detail-panel__label">Developer:</span>
+                  <span class="detail-panel__value">{g().developer}</span>
+                </div>
+              </Show>
 
-            <Show when={g().publisher}>
-              <div class="detail-panel__field">
-                <span class="detail-panel__label">Publisher:</span>
-                <span class="detail-panel__value">{g().publisher}</span>
-              </div>
-            </Show>
+              <Show when={g().publisher}>
+                <div class="detail-panel__field">
+                  <span class="detail-panel__label">Publisher:</span>
+                  <span class="detail-panel__value">{g().publisher}</span>
+                </div>
+              </Show>
 
-            <Show when={g().genre}>
-              <div class="detail-panel__field">
-                <span class="detail-panel__label">Genre:</span>
-                <span class="detail-panel__value">{g().genre}</span>
-              </div>
-            </Show>
+              <Show when={g().genre}>
+                <div class="detail-panel__field">
+                  <span class="detail-panel__label">Genre:</span>
+                  <span class="detail-panel__value">{g().genre}</span>
+                </div>
+              </Show>
 
-            <Show when={g().series}>
-              <div class="detail-panel__field">
-                <span class="detail-panel__label">Series:</span>
-                <span class="detail-panel__value">{g().series}</span>
-              </div>
-            </Show>
+              <Show when={g().series}>
+                <div class="detail-panel__field">
+                  <span class="detail-panel__label">Series:</span>
+                  <span class="detail-panel__value">{g().series}</span>
+                </div>
+              </Show>
 
-            <Show when={g().play_mode}>
-              <div class="detail-panel__field">
-                <span class="detail-panel__label">Players:</span>
-                <span class="detail-panel__value">{g().play_mode}</span>
-              </div>
-            </Show>
+              <Show when={g().play_mode}>
+                <div class="detail-panel__field">
+                  <span class="detail-panel__label">Players:</span>
+                  <span class="detail-panel__value">{g().play_mode}</span>
+                </div>
+              </Show>
 
-            <Show when={g().source}>
-              <div class="detail-panel__field">
-                <span class="detail-panel__label">Source:</span>
-                <span class="detail-panel__value">{g().source}</span>
-              </div>
-            </Show>
+              <Show when={g().source}>
+                <div class="detail-panel__field">
+                  <span class="detail-panel__label">Source:</span>
+                  <span class="detail-panel__value">{g().source}</span>
+                </div>
+              </Show>
 
-            <div class="detail-panel__field">
-              <span class="detail-panel__label">Favorite:</span>
-              <span class="detail-panel__value">
-                {g().favorite ? "\u2605 Yes" : "No"}
-              </span>
+              <div class="detail-panel__field">
+                <span class="detail-panel__label">Favorite:</span>
+                <span class="detail-panel__value">
+                  {g().favorite ? "\u2605 Yes" : "No"}
+                </span>
+              </div>
+
+              <Show when={g().overview}>
+                <div class="detail-panel__overview">{g().overview}</div>
+              </Show>
             </div>
 
-            <Show when={g().overview}>
-              <div class="detail-panel__overview">{g().overview}</div>
-            </Show>
+            {/* Play button pinned to bottom */}
+            <div class="detail-panel__play-wrap">
+              <button class="detail-panel__play-btn" onClick={handlePlay}>
+                {"\u25B6 PLAY"}
+              </button>
+            </div>
           </>
         )}
       </Show>

@@ -1,4 +1,4 @@
-import { Component, For, onMount, onCleanup } from "solid-js";
+import { Component, For, onMount, onCleanup, createSignal } from "solid-js";
 import { listen } from "@tauri-apps/api/event";
 import { MenuBar } from "./components/MenuBar";
 import { StatusBar } from "./components/StatusBar";
@@ -27,9 +27,13 @@ import {
 } from "./lib/store";
 import { initKeyboardHandler, registerKey, guardedLaunch } from "./lib/keyboard";
 import { launchGame, toggleFavorite, sendGameInput } from "./lib/commands";
+import { ResizeHandle } from "./components/ResizeHandle";
 import type { ChoicePayload } from "./lib/types";
 
 const App: Component = () => {
+  const [sidebarWidth, setSidebarWidth] = createSignal(200);
+  const [detailWidth, setDetailWidth] = createSignal(320);
+
   onMount(async () => {
     // Set initial theme
     document.documentElement.setAttribute("data-theme", theme());
@@ -240,9 +244,21 @@ const App: Component = () => {
       <MenuBar />
       <SearchBar />
       <div class="main-content">
-        <FilterPanel />
+        <div style={`width: ${sidebarWidth()}px; flex-shrink: 0;`}>
+          <FilterPanel />
+        </div>
+        <ResizeHandle
+          direction="horizontal"
+          onResize={(d) => setSidebarWidth(Math.max(120, Math.min(500, sidebarWidth() + d)))}
+        />
         <GameList />
-        <DetailPanel />
+        <ResizeHandle
+          direction="horizontal"
+          onResize={(d) => setDetailWidth(Math.max(200, Math.min(600, detailWidth() - d)))}
+        />
+        <div style={`width: ${detailWidth()}px; flex-shrink: 0;`}>
+          <DetailPanel />
+        </div>
       </div>
       <StatusBar />
 
