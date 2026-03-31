@@ -45,7 +45,12 @@ A DOS-style alternate frontend for eXo collections (eXoDOS, eXoWin9x, etc.) buil
 - Vitest + happy-dom for unit and component tests
 - `vite-plugin-solid` included in `vitest.config.ts` with `hot: false` to enable JSX in tests without triggering solid-refresh HMR
 - Component tests use `render` from `solid-js/web` directly (no separate testing library)
-- Test files: `commands.test.ts`, `commands-remaining.test.ts`, `filters.test.ts`, `keyboard.test.ts`, `guardedLaunch.test.ts`, `store.test.ts`, `dialog.test.tsx`, `statusBar.test.tsx`, `gameList.test.tsx`
+- Test files cover all user-facing functionality:
+  - **Commands**: `commands.test.ts`, `commands-remaining.test.ts` — all 14 Tauri IPC wrappers
+  - **Store**: `store.test.ts`, `filterEdgeCases.test.ts` — `fetchGames` param mapping for every filter/sort/pagination field, all 6 content types, combined filter scenarios, search query edge cases
+  - **Keyboard**: `keyboard.test.ts`, `guardedLaunch.test.ts` — dispatch logic, context matching, INPUT element passthrough, debounce guard
+  - **Filter logic**: `filters.test.ts` — param building, sort toggle, sort indicators
+  - **Components**: `dialog.test.tsx`, `statusBar.test.tsx`, `gameList.test.tsx`, `searchBar.test.tsx`, `filterPanel.test.tsx`, `menuBar.test.tsx`, `collectionPicker.test.tsx`
 
 ## Keyboard Shortcuts
 | Key | Action |
