@@ -47,7 +47,7 @@ fn make_db_with_games() -> Connection {
 fn test_search_returns_all_games_no_filter() {
     let conn = make_db_with_games();
     let result = queries::search_games(
-        &conn, "", "Game", None, None, None, None, None, None,
+        &conn, "", "Game", &[], &[], &[], &[], &[], &[],
         false, "title", "asc", 0, 100,
     )
     .unwrap();
@@ -58,7 +58,7 @@ fn test_search_returns_all_games_no_filter() {
 fn test_search_filters_by_content_type_magazine() {
     let conn = make_db_with_games();
     let result = queries::search_games(
-        &conn, "", "Magazine", None, None, None, None, None, None,
+        &conn, "", "Magazine", &[], &[], &[], &[], &[], &[],
         false, "title", "asc", 0, 100,
     )
     .unwrap();
@@ -70,7 +70,7 @@ fn test_search_filters_by_content_type_magazine() {
 fn test_search_all_content_types_when_empty() {
     let conn = make_db_with_games();
     let result = queries::search_games(
-        &conn, "", "", None, None, None, None, None, None,
+        &conn, "", "", &[], &[], &[], &[], &[], &[],
         false, "title", "asc", 0, 100,
     )
     .unwrap();
@@ -81,7 +81,7 @@ fn test_search_all_content_types_when_empty() {
 fn test_search_by_fts_query() {
     let conn = make_db_with_games();
     let result = queries::search_games(
-        &conn, "doom", "Game", None, None, None, None, None, None,
+        &conn, "doom", "Game", &[], &[], &[], &[], &[], &[],
         false, "title", "asc", 0, 100,
     )
     .unwrap();
@@ -93,7 +93,7 @@ fn test_search_by_fts_query() {
 fn test_search_fts_prefix_match() {
     let conn = make_db_with_games();
     let result = queries::search_games(
-        &conn, "qu", "", None, None, None, None, None, None,
+        &conn, "qu", "", &[], &[], &[], &[], &[], &[],
         false, "title", "asc", 0, 100,
     )
     .unwrap();
@@ -104,8 +104,9 @@ fn test_search_fts_prefix_match() {
 #[test]
 fn test_filter_by_developer() {
     let conn = make_db_with_games();
+    let maxis = "Maxis".to_string();
     let result = queries::search_games(
-        &conn, "", "Game", None, Some("Maxis"), None, None, None, None,
+        &conn, "", "Game", &[], &[maxis], &[], &[], &[], &[],
         false, "title", "asc", 0, 100,
     )
     .unwrap();
@@ -117,7 +118,7 @@ fn test_filter_by_developer() {
 fn test_filter_by_year() {
     let conn = make_db_with_games();
     let result = queries::search_games(
-        &conn, "", "Game", None, None, None, Some(1993), None, None,
+        &conn, "", "Game", &[], &[], &[], &[1993], &[], &[],
         false, "title", "asc", 0, 100,
     )
     .unwrap();
@@ -129,7 +130,7 @@ fn test_filter_by_year() {
 fn test_filter_favorites_only() {
     let conn = make_db_with_games();
     let result = queries::search_games(
-        &conn, "", "", None, None, None, None, None, None,
+        &conn, "", "", &[], &[], &[], &[], &[], &[],
         true, "title", "asc", 0, 100,
     )
     .unwrap();
@@ -142,7 +143,7 @@ fn test_filter_favorites_only() {
 fn test_sort_by_year_asc() {
     let conn = make_db_with_games();
     let result = queries::search_games(
-        &conn, "", "Game", None, None, None, None, None, None,
+        &conn, "", "Game", &[], &[], &[], &[], &[], &[],
         false, "year", "asc", 0, 100,
     )
     .unwrap();
@@ -154,7 +155,7 @@ fn test_sort_by_year_asc() {
 fn test_sort_by_year_desc() {
     let conn = make_db_with_games();
     let result = queries::search_games(
-        &conn, "", "Game", None, None, None, None, None, None,
+        &conn, "", "Game", &[], &[], &[], &[], &[], &[],
         false, "year", "desc", 0, 100,
     )
     .unwrap();
@@ -166,7 +167,7 @@ fn test_sort_by_year_desc() {
 fn test_sort_by_title_asc() {
     let conn = make_db_with_games();
     let result = queries::search_games(
-        &conn, "", "Game", None, None, None, None, None, None,
+        &conn, "", "Game", &[], &[], &[], &[], &[], &[],
         false, "title", "asc", 0, 100,
     )
     .unwrap();
@@ -175,15 +176,40 @@ fn test_sort_by_title_asc() {
 }
 
 #[test]
+fn test_sort_by_title_desc() {
+    let conn = make_db_with_games();
+    let result = queries::search_games(
+        &conn, "", "Game", &[], &[], &[], &[], &[], &[],
+        false, "title", "desc", 0, 100,
+    )
+    .unwrap();
+    let titles: Vec<&str> = result.games.iter().map(|g| g.title.as_str()).collect();
+    assert_eq!(titles, vec!["Wolfenstein 3D", "Sim City", "Quake", "Doom"]);
+}
+
+#[test]
+fn test_sort_by_developer() {
+    let conn = make_db_with_games();
+    let result = queries::search_games(
+        &conn, "", "Game", &[], &[], &[], &[], &[], &[],
+        false, "developer", "asc", 0, 100,
+    )
+    .unwrap();
+    // "id Software" (3 games) comes before "Maxis"
+    let devs: Vec<Option<&str>> = result.games.iter().map(|g| g.developer.as_deref()).collect();
+    assert!(devs.iter().position(|d| *d == Some("Maxis")).unwrap() > 0);
+}
+
+#[test]
 fn test_pagination() {
     let conn = make_db_with_games();
     let page1 = queries::search_games(
-        &conn, "", "Game", None, None, None, None, None, None,
+        &conn, "", "Game", &[], &[], &[], &[], &[], &[],
         false, "title", "asc", 0, 2,
     )
     .unwrap();
     let page2 = queries::search_games(
-        &conn, "", "Game", None, None, None, None, None, None,
+        &conn, "", "Game", &[], &[], &[], &[], &[], &[],
         false, "title", "asc", 2, 2,
     )
     .unwrap();
