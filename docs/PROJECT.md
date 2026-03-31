@@ -41,6 +41,12 @@ A DOS-style alternate frontend for eXo collections (eXoDOS, eXoWin9x, etc.) buil
 - quick-xml (XML parsing)
 - Pure CSS (DOS aesthetic, CRT effects, themes)
 
+## Testing
+- Vitest + happy-dom for unit and component tests
+- `vite-plugin-solid` included in `vitest.config.ts` with `hot: false` to enable JSX in tests without triggering solid-refresh HMR
+- Component tests use `render` from `solid-js/web` directly (no separate testing library)
+- Test files: `commands.test.ts`, `commands-remaining.test.ts`, `filters.test.ts`, `keyboard.test.ts`, `guardedLaunch.test.ts`, `store.test.ts`, `dialog.test.tsx`, `statusBar.test.tsx`, `gameList.test.tsx`
+
 ## Keyboard Shortcuts
 | Key | Action |
 |-----|--------|

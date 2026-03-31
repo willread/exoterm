@@ -1,0 +1,218 @@
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
+import { invoke } from "@tauri-apps/api/core";
+import { render } from "solid-js/web";
+import { GameList } from "../components/GameList";
+import {
+  setGameList,
+  setTotalCount,
+  setSelectedIndex,
+  setFilters,
+  setSearchQuery,
+} from "../lib/store";
+
+const mockInvoke = vi.mocked(invoke);
+
+let dispose: (() => void) | undefined;
+
+function makeGame(overrides = {}) {
+  return {
+    id: 1,
+    title: "Doom",
+    release_year: 1993,
+    developer: "id Software",
+    publisher: "GT Interactive",
+    genre: "Action",
+    platform: "MS-DOS",
+    favorite: false,
+    content_type: "Game",
+    ...overrides,
+  };
+}
+
+beforeEach(() => {
+  mockInvoke.mockReset();
+  // Prevent fetchGames from clobbering test state by returning empty by default
+  mockInvoke.mockImplementation(async (cmd) => {
+    if (cmd === "search_games") return { games: [], total_count: 0 };
+    return null;
+  });
+  setGameList([]);
+  setTotalCount(0);
+  setSelectedIndex(0);
+  setSearchQuery("");
+  setFilters("contentType", "Game");
+  setFilters("genre", null);
+  setFilters("sortBy", "title");
+  setFilters("sortDir", "asc");
+  setFilters("offset", 0);
+});
+
+afterEach(() => {
+  dispose?.();
+  dispose = undefined;
+  document.body.innerHTML = "";
+});
+
+describe("GameList empty states", () => {
+  it("shows 'No games found' prompt when there are no collections scanned", async () => {
+    setGameList([]);
+    setTotalCount(0);
+    dispose = render(() => <GameList />, document.body);
+    // Allow the createEffect / fetchGames microtask to settle
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(document.querySelector(".game-list__empty")?.textContent).toContain(
+      "No games found"
+    );
+    expect(document.querySelector(".game-list__empty")?.textContent).toContain(
+      "Add a collection"
+    );
+  });
+
+  it("shows 'No matches.' when there are games but none match the filter", async () => {
+    // Simulate: some games exist globally (totalCount > 0) but search returns empty
+    mockInvoke.mockImplementation(async (cmd) => {
+      if (cmd === "search_games") return { games: [], total_count: 500 };
+      return null;
+    });
+    // Pre-set totalCount so initial render sees it before the effect fires
+    setGameList([]);
+    setTotalCount(500);
+    dispose = render(() => <GameList />, document.body);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(document.querySelector(".game-list__empty")?.textContent).toBe(
+      "No matches."
+    );
+  });
+});
+
+describe("GameList rows", () => {
+  it("renders a row for each game", async () => {
+    const games = [
+      makeGame({ id: 1, title: "Doom" }),
+      makeGame({ id: 2, title: "Quake" }),
+      makeGame({ id: 3, title: "Heretic" }),
+    ];
+    mockInvoke.mockImplementation(async (cmd) => {
+      if (cmd === "search_games") return { games, total_count: 3 };
+      return null;
+    });
+    setGameList(games);
+    setTotalCount(3);
+    dispose = render(() => <GameList />, document.body);
+    await Promise.resolve();
+    await Promise.resolve();
+    const rows = document.querySelectorAll(".game-list__row");
+    expect(rows).toHaveLength(3);
+  });
+
+  it("shows game title in the title column", async () => {
+    const games = [makeGame({ id: 1, title: "Wolfenstein 3D" })];
+    setGameList(games);
+    setTotalCount(1);
+    dispose = render(() => <GameList />, document.body);
+    await Promise.resolve();
+    await Promise.resolve();
+    // Use compound selector to exclude the header cell (game-list__header-col also has game-list__col--title)
+    const titleCols = document.querySelectorAll(".game-list__col.game-list__col--title");
+    expect(titleCols[0]?.textContent).toBe("Wolfenstein 3D");
+  });
+
+  it("marks the selected row with the selected class", async () => {
+    const games = [
+      makeGame({ id: 1, title: "Doom" }),
+      makeGame({ id: 2, title: "Quake" }),
+    ];
+    setGameList(games);
+    setSelectedIndex(1);
+    setTotalCount(2);
+    dispose = render(() => <GameList />, document.body);
+    await Promise.resolve();
+    await Promise.resolve();
+    const rows = document.querySelectorAll(".game-list__row");
+    expect(rows[0].classList.contains("game-list__row--selected")).toBe(false);
+    expect(rows[1].classList.contains("game-list__row--selected")).toBe(true);
+  });
+
+  it("shows a star for favorited games", async () => {
+    const games = [
+      makeGame({ id: 1, title: "Doom", favorite: true }),
+      makeGame({ id: 2, title: "Quake", favorite: false }),
+    ];
+    setGameList(games);
+    setTotalCount(2);
+    dispose = render(() => <GameList />, document.body);
+    await Promise.resolve();
+    await Promise.resolve();
+    // Use compound selector to exclude the header cell which also has game-list__col--fav
+    const favCols = document.querySelectorAll(".game-list__col.game-list__col--fav");
+    // Row 0 favorite col shows star; row 1 shows empty
+    expect(favCols[0].textContent).toBe("★");
+    expect(favCols[1].textContent).toBe("");
+  });
+});
+
+describe("GameList sort indicators", () => {
+  it("shows up-arrow on the active ascending sort column", async () => {
+    setFilters("sortBy", "title");
+    setFilters("sortDir", "asc");
+    dispose = render(() => <GameList />, document.body);
+    await Promise.resolve();
+    const headerCols = document.querySelectorAll(".game-list__header-col");
+    // Title header (index 1 after the fav col) should contain ▲
+    const titleHeader = Array.from(headerCols).find((c) =>
+      c.textContent?.startsWith("Title")
+    );
+    expect(titleHeader?.textContent).toContain("▲");
+  });
+
+  it("shows down-arrow on the active descending sort column", async () => {
+    setFilters("sortBy", "year");
+    setFilters("sortDir", "desc");
+    dispose = render(() => <GameList />, document.body);
+    await Promise.resolve();
+    const headerCols = document.querySelectorAll(".game-list__header-col");
+    const yearHeader = Array.from(headerCols).find((c) =>
+      c.textContent?.startsWith("Year")
+    );
+    expect(yearHeader?.textContent).toContain("▼");
+  });
+
+  it("shows no indicator on inactive sort columns", async () => {
+    setFilters("sortBy", "title");
+    dispose = render(() => <GameList />, document.body);
+    await Promise.resolve();
+    const headerCols = document.querySelectorAll(".game-list__header-col");
+    const yearHeader = Array.from(headerCols).find((c) =>
+      c.textContent?.startsWith("Year")
+    );
+    expect(yearHeader?.textContent).not.toContain("▲");
+    expect(yearHeader?.textContent).not.toContain("▼");
+  });
+});
+
+describe("GameList count footer", () => {
+  it("shows position and total when there are games", async () => {
+    const games = [makeGame({ id: 1 }), makeGame({ id: 2 })];
+    setGameList(games);
+    setTotalCount(2);
+    setSelectedIndex(0);
+    dispose = render(() => <GameList />, document.body);
+    await Promise.resolve();
+    await Promise.resolve();
+    const count = document.querySelector(".game-list__count");
+    // Should show "1 / 2" (selectedIndex + 1 / totalCount)
+    expect(count?.textContent).toMatch(/1\s*\/\s*2/);
+  });
+
+  it("shows nothing in the count footer when there are no games", async () => {
+    setGameList([]);
+    setTotalCount(0);
+    dispose = render(() => <GameList />, document.body);
+    await Promise.resolve();
+    await Promise.resolve();
+    const count = document.querySelector(".game-list__count");
+    expect(count?.textContent?.trim()).toBe("");
+  });
+});
