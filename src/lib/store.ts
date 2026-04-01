@@ -9,6 +9,10 @@ export const [crtEnabled, setCrtEnabled] = createSignal(true);
 export const [activePanel, setActivePanel] = createSignal<"sidebar" | "list" | "detail">("list");
 export const [fontSize, setFontSize] = createSignal(16); // px, default 16
 
+// ── Layout state (persisted) ──────────────────
+export const [sidebarWidth, setSidebarWidth] = createSignal(200);
+export const [detailWidth, setDetailWidth] = createSignal(320);
+
 // ── Dialog state ───────────────────────────────
 export const [activeDialog, setActiveDialog] = createSignal<string | null>(null);
 export const [activeMenu, setActiveMenu] = createSignal<string | null>(null);
@@ -114,4 +118,45 @@ export async function fetchGames() {
   } catch (e) {
     console.error("Search failed:", e);
   }
+}
+
+// ── Persistence helpers ───────────────────────
+/** Collect all persisted state into a plain object */
+export function getPersistedState(): Record<string, any> {
+  return {
+    theme: theme(),
+    crtEnabled: crtEnabled(),
+    fontSize: fontSize(),
+    sidebarWidth: sidebarWidth(),
+    detailWidth: detailWidth(),
+    sortBy: filters.sortBy,
+    sortDir: filters.sortDir,
+    contentType: filters.contentType,
+    genre: filters.genre,
+    developer: filters.developer,
+    publisher: filters.publisher,
+    year: filters.year,
+    series: filters.series,
+    platform: filters.platform,
+    favoritesOnly: filters.favoritesOnly,
+  };
+}
+
+/** Restore persisted state from a plain object */
+export function restorePersistedState(saved: Record<string, any>): void {
+  if (saved.theme) setTheme(saved.theme);
+  if (saved.crtEnabled !== undefined) setCrtEnabled(saved.crtEnabled);
+  if (saved.fontSize) setFontSize(saved.fontSize);
+  if (saved.sidebarWidth) setSidebarWidth(saved.sidebarWidth);
+  if (saved.detailWidth) setDetailWidth(saved.detailWidth);
+  if (saved.sortBy) setFilters("sortBy", saved.sortBy);
+  if (saved.sortDir) setFilters("sortDir", saved.sortDir);
+  if (saved.contentType !== undefined) setFilters("contentType", saved.contentType);
+  if (saved.genre !== undefined) setFilters("genre", saved.genre);
+  if (saved.developer !== undefined) setFilters("developer", saved.developer);
+  if (saved.publisher !== undefined) setFilters("publisher", saved.publisher);
+  if (saved.year !== undefined) setFilters("year", saved.year);
+  if (saved.series !== undefined) setFilters("series", saved.series);
+  if (saved.platform !== undefined) setFilters("platform", saved.platform);
+  if (saved.favoritesOnly !== undefined) setFilters("favoritesOnly", saved.favoritesOnly);
 }

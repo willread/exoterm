@@ -1,4 +1,4 @@
-import { Component, onMount, onCleanup, createSignal } from "solid-js";
+import { Component, onMount, createEffect } from "solid-js";
 import { MenuBar } from "./components/MenuBar";
 import { StatusBar } from "./components/StatusBar";
 import { SearchBar } from "./components/SearchBar";
@@ -19,19 +19,37 @@ import {
   setSelectedIndex,
   setSearchQuery,
   fetchGames,
+  sidebarWidth,
+  setSidebarWidth,
+  detailWidth,
+  setDetailWidth,
+  fontSize,
+  filters,
+  getPersistedState,
+  restorePersistedState,
 } from "./lib/store";
+import { loadState, saveStateDebounced } from "./lib/persist";
 import { initKeyboardHandler, registerKey, guardedLaunch } from "./lib/keyboard";
 import { launchGame, toggleFavorite } from "./lib/commands";
 import { ResizeHandle } from "./components/ResizeHandle";
 
 const App: Component = () => {
-  const [sidebarWidth, setSidebarWidth] = createSignal(200);
-  const [detailWidth, setDetailWidth] = createSignal(320);
-
   onMount(async () => {
-    // Set initial theme
+    // Restore persisted state before first render settles
+    try {
+      const saved = await loadState();
+      if (Object.keys(saved).length > 0) {
+        restorePersistedState(saved);
+      }
+    } catch (_) {
+      // First run or no store — use defaults
+    }
+
+    // Apply theme/CRT/font to DOM
     document.documentElement.setAttribute("data-theme", theme());
     document.documentElement.setAttribute("data-crt", String(crtEnabled()));
+    document.documentElement.style.setProperty("--font-size", fontSize() + "px");
+    document.documentElement.style.setProperty("--char-h", fontSize() + "px");
 
     // Initialize keyboard handler
     initKeyboardHandler();
@@ -160,7 +178,20 @@ const App: Component = () => {
       context: "global",
       handler: () => setActiveMenu(activeMenu() === "help" ? null : "help"),
     });
+  });
 
+  // Auto-persist whenever any persisted value changes
+  createEffect(() => {
+    const state = getPersistedState();
+    saveStateDebounced(state);
+  });
+
+  // Keep DOM attributes in sync with reactive state
+  createEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme());
+  });
+  createEffect(() => {
+    document.documentElement.setAttribute("data-crt", String(crtEnabled()));
   });
 
   return (
@@ -191,7 +222,7 @@ const App: Component = () => {
       <CollectionPicker />
 
       <Dialog
-        title="About eXo Terminal"
+        title="About exoterm"
         visible={activeDialog() === "about"}
         onClose={() => setActiveDialog(null)}
         footer={
@@ -201,7 +232,7 @@ const App: Component = () => {
         }
       >
         <div style="text-align: center; padding: 1ch;">
-          <div>eXo Terminal v0.1.0</div>
+          <div>exoterm v0.1.0</div>
           <div style="margin-top: 4px;">
             A DOS-style frontend for eXo collections
           </div>

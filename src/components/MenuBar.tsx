@@ -1,4 +1,4 @@
-import { Component, Show, onMount, onCleanup } from "solid-js";
+import { Component, Show, For, onMount, onCleanup, createSignal } from "solid-js";
 import { activeMenu, setActiveMenu, setActiveDialog, theme, setTheme, crtEnabled, setCrtEnabled, fontSize, setFontSize } from "../lib/store";
 import type { Theme } from "../lib/types";
 
@@ -11,12 +11,17 @@ const THEMES: { label: string; value: Theme }[] = [
 
 export const MenuBar: Component = () => {
   let menuBarRef: HTMLDivElement | undefined;
+  const [themeSubmenuOpen, setThemeSubmenuOpen] = createSignal(false);
 
   const toggleMenu = (menu: string) => {
     setActiveMenu(activeMenu() === menu ? null : menu);
+    setThemeSubmenuOpen(false);
   };
 
-  const closeMenu = () => setActiveMenu(null);
+  const closeMenu = () => {
+    setActiveMenu(null);
+    setThemeSubmenuOpen(false);
+  };
 
   const handleDocumentClick = (e: MouseEvent) => {
     if (activeMenu() && menuBarRef && !menuBarRef.contains(e.target as Node)) {
@@ -27,12 +32,8 @@ export const MenuBar: Component = () => {
   onMount(() => document.addEventListener("click", handleDocumentClick));
   onCleanup(() => document.removeEventListener("click", handleDocumentClick));
 
-  const cycleTheme = () => {
-    const current = theme();
-    const idx = THEMES.findIndex((t) => t.value === current);
-    const next = THEMES[(idx + 1) % THEMES.length];
-    setTheme(next.value);
-    document.documentElement.setAttribute("data-theme", next.value);
+  const selectTheme = (t: Theme) => {
+    setTheme(t);
     closeMenu();
   };
 
@@ -92,8 +93,26 @@ export const MenuBar: Component = () => {
         <span class="menu-bar__hotkey">O</span>ptions
         <Show when={activeMenu() === "options"}>
           <div class="dropdown">
-            <div class="dropdown__item" onClick={cycleTheme}>
-              Theme: {THEMES.find((t) => t.value === theme())?.label}
+            <div
+              class="dropdown__item dropdown__item--submenu"
+              onMouseEnter={() => setThemeSubmenuOpen(true)}
+              onMouseLeave={() => setThemeSubmenuOpen(false)}
+            >
+              {"Theme  \u25B6"}
+              <Show when={themeSubmenuOpen()}>
+                <div class="dropdown dropdown--submenu">
+                  <For each={THEMES}>
+                    {(t) => (
+                      <div
+                        class={`dropdown__item ${theme() === t.value ? "dropdown__item--active" : ""}`}
+                        onClick={() => selectTheme(t.value)}
+                      >
+                        {theme() === t.value ? "\u2713 " : "  "}{t.label}
+                      </div>
+                    )}
+                  </For>
+                </div>
+              </Show>
             </div>
             <div class="dropdown__item" onClick={() => { setCrtEnabled(!crtEnabled()); closeMenu(); }}>
               CRT Effects: {crtEnabled() ? "ON" : "OFF"}
@@ -128,19 +147,19 @@ export const MenuBar: Component = () => {
         <Show when={activeMenu() === "help"}>
           <div class="dropdown">
             <div class="dropdown__item" onClick={() => { setActiveDialog("about"); closeMenu(); }}>
-              About eXo Terminal
+              About exoterm
             </div>
           </div>
         </Show>
       </div>
 
       {/* Center title — draggable area */}
-      <div class="menu-bar__title" data-tauri-drag-region>eXo Terminal</div>
+      <div class="menu-bar__title" data-tauri-drag-region>exoterm</div>
 
-      {/* Window controls — DOS-style */}
+      {/* Window controls — DOS box-drawing characters */}
       <div class="menu-bar__controls">
-        <div class="menu-bar__control" onClick={handleMinimize} title="Minimize">_</div>
-        <div class="menu-bar__control" onClick={handleMaximize} title="Maximize">{"\u25A1"}</div>
+        <div class="menu-bar__control" onClick={handleMinimize} title="Minimize">{"\u2500"}</div>
+        <div class="menu-bar__control" onClick={handleMaximize} title="Maximize">{"\u2610"}</div>
         <div class="menu-bar__control menu-bar__control--close" onClick={handleClose} title="Close">X</div>
       </div>
     </div>

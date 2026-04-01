@@ -119,7 +119,7 @@ export const GameList: Component = () => {
   return (
     <div class="game-list">
       <div class="game-list__header no-select">
-        <div class="game-list__header-col game-list__col--fav" title="Favorite">
+        <div class="game-list__header-col game-list__col--fav game-list__header-col--static" title="Favorite">
           *
         </div>
         <div
@@ -183,9 +183,6 @@ export const GameList: Component = () => {
                       onClick={() => {
                         setSelectedIndex(absIdx());
                         setSelectedGameId(game.id);
-                      }}
-                      onDblClick={() => {
-                        import("../lib/commands").then((c) => c.launchGame(game.id));
                       }}
                     >
                       <div

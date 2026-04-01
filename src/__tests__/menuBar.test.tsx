@@ -19,7 +19,6 @@ beforeEach(() => {
   setActiveDialog(null);
   setTheme("blue");
   setCrtEnabled(true);
-  // Reset data-theme attribute
   document.documentElement.setAttribute("data-theme", "blue");
 });
 
@@ -35,7 +34,7 @@ describe("MenuBar rendering", () => {
   it("renders the app title in the center", () => {
     dispose = render(() => <MenuBar />, document.body);
     expect(document.querySelector(".menu-bar__title")?.textContent).toBe(
-      "eXo Terminal"
+      "exoterm"
     );
   });
 
@@ -46,6 +45,12 @@ describe("MenuBar rendering", () => {
     expect(texts.some((t) => t?.includes("ile"))).toBe(true); // "File"
     expect(texts.some((t) => t?.includes("ptions"))).toBe(true); // "Options"
     expect(texts.some((t) => t?.includes("elp"))).toBe(true); // "Help"
+  });
+
+  it("renders window controls", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    const controls = document.querySelectorAll(".menu-bar__control");
+    expect(controls.length).toBe(3);
   });
 });
 
@@ -94,7 +99,6 @@ describe("MenuBar dropdown toggle", () => {
     fileItem.click();
     expect(activeMenu()).toBe("file");
 
-    // Click outside — document body, which is not inside the menu bar
     document.body.dispatchEvent(
       new MouseEvent("click", { bubbles: true, cancelable: true })
     );
@@ -130,7 +134,7 @@ describe("MenuBar File menu", () => {
     ) as HTMLElement;
     manageItem.click();
     expect(activeDialog()).toBe("manage-collections");
-    expect(activeMenu()).toBeNull(); // menu closes after selection
+    expect(activeMenu()).toBeNull();
   });
 
   it("'Add Collection...' sets activeDialog to 'collections'", () => {
@@ -156,58 +160,13 @@ describe("MenuBar Options menu", () => {
     optItem.click();
   }
 
-  it("shows current theme name in the Theme item", () => {
-    setTheme("amber");
+  it("shows Theme submenu item", () => {
     dispose = render(() => <MenuBar />, document.body);
     openOptionsMenu();
     const themeItem = Array.from(document.querySelectorAll(".dropdown__item")).find((i) =>
-      i.textContent?.startsWith("Theme:")
+      i.textContent?.includes("Theme")
     );
-    expect(themeItem?.textContent).toContain("Amber Phosphor");
-  });
-
-  it("clicking Theme cycles from blue → bw", () => {
-    setTheme("blue");
-    dispose = render(() => <MenuBar />, document.body);
-    openOptionsMenu();
-    const themeItem = Array.from(document.querySelectorAll(".dropdown__item")).find((i) =>
-      i.textContent?.startsWith("Theme:")
-    ) as HTMLElement;
-    themeItem.click();
-    expect(theme()).toBe("bw");
-  });
-
-  it("clicking Theme cycles from bw → amber", () => {
-    setTheme("bw");
-    dispose = render(() => <MenuBar />, document.body);
-    openOptionsMenu();
-    const themeItem = Array.from(document.querySelectorAll(".dropdown__item")).find((i) =>
-      i.textContent?.startsWith("Theme:")
-    ) as HTMLElement;
-    themeItem.click();
-    expect(theme()).toBe("amber");
-  });
-
-  it("clicking Theme cycles from green → blue (wraps around)", () => {
-    setTheme("green");
-    dispose = render(() => <MenuBar />, document.body);
-    openOptionsMenu();
-    const themeItem = Array.from(document.querySelectorAll(".dropdown__item")).find((i) =>
-      i.textContent?.startsWith("Theme:")
-    ) as HTMLElement;
-    themeItem.click();
-    expect(theme()).toBe("blue");
-  });
-
-  it("cycling theme updates data-theme attribute on documentElement", () => {
-    setTheme("blue");
-    dispose = render(() => <MenuBar />, document.body);
-    openOptionsMenu();
-    const themeItem = Array.from(document.querySelectorAll(".dropdown__item")).find((i) =>
-      i.textContent?.startsWith("Theme:")
-    ) as HTMLElement;
-    themeItem.click();
-    expect(document.documentElement.getAttribute("data-theme")).toBe("bw");
+    expect(themeItem).not.toBeUndefined();
   });
 
   it("shows 'CRT Effects: ON' when crtEnabled is true", () => {
@@ -256,7 +215,7 @@ describe("MenuBar Options menu", () => {
 // ── Help menu items ────────────────────────────────────────────────────────────
 
 describe("MenuBar Help menu", () => {
-  it("'About eXo Terminal' sets activeDialog to 'about'", () => {
+  it("'About exoterm' sets activeDialog to 'about'", () => {
     dispose = render(() => <MenuBar />, document.body);
     const helpItem = Array.from(document.querySelectorAll(".menu-bar__item")).find((i) =>
       i.textContent?.includes("elp")

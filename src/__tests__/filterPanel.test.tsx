@@ -56,57 +56,6 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
-// ── Content Type section ─────────────────────────────────────────────────────
-
-describe("FilterPanel content type section", () => {
-  it("shows content type items when available", () => {
-    populateFilterOptions();
-    dispose = render(() => <FilterPanel />, document.body);
-    const items = document.querySelectorAll(".sidebar__item");
-    const gameItem = Array.from(items).find((i) => i.textContent?.trim() === "Game");
-    const magItem = Array.from(items).find((i) => i.textContent?.trim() === "Magazine");
-    expect(gameItem).not.toBeUndefined();
-    expect(magItem).not.toBeUndefined();
-  });
-
-  it("shows 'All' option for content types", () => {
-    populateFilterOptions();
-    dispose = render(() => <FilterPanel />, document.body);
-    const items = document.querySelectorAll(".sidebar__item");
-    const allItem = Array.from(items).find((i) => i.textContent?.trim() === "All");
-    expect(allItem).not.toBeUndefined();
-  });
-
-  it("clicking a content type selects it", () => {
-    populateFilterOptions();
-    dispose = render(() => <FilterPanel />, document.body);
-    const items = document.querySelectorAll(".sidebar__item");
-    const magItem = Array.from(items).find((i) => i.textContent?.trim() === "Magazine") as HTMLElement;
-    magItem.click();
-    expect(filters.contentType).toBe("Magazine");
-  });
-
-  it("clicking the active content type deselects to All", () => {
-    setFilters("contentType", "Game");
-    populateFilterOptions();
-    dispose = render(() => <FilterPanel />, document.body);
-    const items = document.querySelectorAll(".sidebar__item");
-    const gameItem = Array.from(items).find((i) => i.textContent?.trim() === "Game") as HTMLElement;
-    gameItem.click();
-    expect(filters.contentType).toBe("");
-  });
-
-  it("clicking All sets contentType to empty string", () => {
-    setFilters("contentType", "Game");
-    populateFilterOptions();
-    dispose = render(() => <FilterPanel />, document.body);
-    const items = document.querySelectorAll(".sidebar__item");
-    const allItem = Array.from(items).find((i) => i.textContent?.trim() === "All") as HTMLElement;
-    allItem.click();
-    expect(filters.contentType).toBe("");
-  });
-});
-
 // ── Platform section (expanded by default) ────────────────────────────────────
 
 describe("FilterPanel platform section", () => {

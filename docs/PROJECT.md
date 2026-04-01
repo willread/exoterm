@@ -1,4 +1,4 @@
-# eXo Terminal
+# exoterm
 
 A DOS-style alternate frontend for eXo collections (eXoDOS, eXoWin9x, etc.) built with Tauri 2.
 

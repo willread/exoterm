@@ -103,11 +103,13 @@ body {
 }
 
 .menu-bar__control {
-  width: 3ch;
+  width: 2.5ch;
   text-align: center;
   cursor: pointer;
   height: var(--char-h);
   line-height: var(--char-h);
+  font-size: 0.8em;
+  font-weight: bold;
 }
 
 .menu-bar__control:hover {
@@ -146,8 +148,8 @@ body {
 
 .dropdown__item:hover,
 .dropdown__item--active {
-  background: var(--bg-highlight);
-  color: var(--fg-highlight);
+  background: var(--bg-menu-highlight);
+  color: var(--fg-menu-highlight);
 }
 
 .dropdown__separator {
@@ -158,6 +160,17 @@ body {
 .dropdown__shortcut {
   margin-left: 3ch;
   opacity: 0.7;
+}
+
+/* Submenu (e.g. Theme picker) */
+.dropdown__item--submenu {
+  position: relative;
+}
+
+.dropdown--submenu {
+  position: absolute;
+  left: 100%;
+  top: -1px;
 }
 
 /* ── Main Content Area ────────────────────────── */
@@ -361,6 +374,15 @@ body {
   color: var(--fg-highlight);
 }
 
+.game-list__header-col--static {
+  cursor: default;
+}
+
+.game-list__header-col--static:hover {
+  background: inherit;
+  color: inherit;
+}
+
 .game-list__body {
   flex: 1;
   overflow-y: auto;
@@ -376,7 +398,9 @@ body {
 }
 
 .game-list__row:hover {
-  background: var(--bg-secondary);
+  background: var(--bg-highlight);
+  color: var(--fg-highlight);
+  opacity: 0.7;
 }
 
 .game-list__row--selected {
