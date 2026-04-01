@@ -397,7 +397,6 @@ body {
 .game-list__body {
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
   position: relative;
 }
 
@@ -442,7 +441,6 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  overflow: hidden;
 }
 
 .game-list__empty {
