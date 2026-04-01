@@ -415,10 +415,7 @@ body {
 }
 
 .game-list__col--title { flex: 3; min-width: 20ch; }
-/* Year header stays left-aligned so adding/removing the sort arrow doesn't
-   shift the "Year" text.  Data rows are right-aligned for numeric readability. */
 .game-list__col--year { width: 8ch; flex-shrink: 0; }
-.game-list__row .game-list__col--year { text-align: right; }
 .game-list__col--developer { flex: 2; min-width: 12ch; }
 .game-list__col--genre { flex: 2; min-width: 12ch; }
 .game-list__col--fav { width: 3ch; text-align: center; flex-shrink: 0; color: var(--fg-favorite); }
