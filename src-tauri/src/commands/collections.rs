@@ -93,6 +93,38 @@ pub fn delete_collection(state: State<AppState>, id: i64) -> Result<(), String> 
 }
 
 #[tauri::command]
+pub fn rescan_all_collections(state: State<AppState>) -> Result<usize, String> {
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+
+    // Gather all existing collections
+    let mut stmt = db
+        .prepare("SELECT id, name, path FROM collections")
+        .map_err(|e| e.to_string())?;
+    let cols: Vec<(i64, String, String)> = stmt
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
+        .map_err(|e| e.to_string())?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(|e| e.to_string())?;
+
+    let mut total = 0;
+    for (collection_id, name, path) in &cols {
+        // Update last_scanned timestamp
+        db.execute(
+            "UPDATE collections SET last_scanned = strftime('%s', 'now') WHERE id = ?",
+            [collection_id],
+        )
+        .map_err(|e| e.to_string())?;
+
+        let count = parser::scan_collection(&db, *collection_id, path, &mut |count, file| {
+            eprintln!("Re-scanning {} ({}): {} games so far...", name, file, count);
+        })?;
+        total += count;
+    }
+
+    Ok(total)
+}
+
+#[tauri::command]
 pub fn validate_collection_path(path: String) -> Result<bool, String> {
     let platforms_dir = Path::new(&path).join("Data").join("Platforms");
     Ok(platforms_dir.exists())

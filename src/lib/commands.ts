@@ -80,6 +80,10 @@ export async function deleteCollection(id: number): Promise<void> {
   return invoke("delete_collection", { id });
 }
 
+export async function rescanAllCollections(): Promise<number> {
+  return invoke("rescan_all_collections");
+}
+
 export async function launchGame(id: number): Promise<string> {
   return invoke("launch_game", { id });
 }

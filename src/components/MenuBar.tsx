@@ -1,6 +1,6 @@
 import { Component, Show, For, onMount, onCleanup, createSignal } from "solid-js";
-import { activeMenu, setActiveMenu, setActiveDialog, theme, setTheme, crtEnabled, setCrtEnabled, fontSize, setFontSize, fetchGames } from "../lib/store";
-import { clearAllFavorites } from "../lib/commands";
+import { activeMenu, setActiveMenu, setActiveDialog, theme, setTheme, crtEnabled, setCrtEnabled, fontSize, setFontSize, fetchGames, setScanning, setScanStatus, refetchCollections } from "../lib/store";
+import { clearAllFavorites, rescanAllCollections } from "../lib/commands";
 import type { Theme } from "../lib/types";
 
 const THEMES: { label: string; value: Theme }[] = [
@@ -78,6 +78,23 @@ export const MenuBar: Component = () => {
             </div>
             <div class="dropdown__item" onClick={() => { setActiveDialog("collections"); closeMenu(); }}>
               Add Collection...
+            </div>
+            <div class="dropdown__item" onClick={async () => {
+              closeMenu();
+              setScanning(true);
+              setScanStatus("Re-scanning collections...");
+              try {
+                const count = await rescanAllCollections();
+                setScanStatus(`Re-scan complete: ${count.toLocaleString()} games`);
+                refetchCollections();
+                fetchGames();
+              } catch (e) {
+                setScanStatus(`Re-scan failed: ${e}`);
+              } finally {
+                setTimeout(() => setScanning(false), 3000);
+              }
+            }}>
+              Re-scan Libraries
             </div>
             <div class="dropdown__separator" />
             <div class="dropdown__item" onClick={() => { handleClose(); closeMenu(); }}>
