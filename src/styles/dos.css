@@ -406,6 +406,7 @@ body {
   line-height: var(--char-h);
   cursor: pointer;
   white-space: nowrap;
+  min-width: 100%;
 }
 
 .game-list__row:hover {
@@ -440,7 +441,7 @@ body {
   position: absolute;
   top: 0;
   left: 0;
-  right: 0;
+  min-width: 100%;
 }
 
 .game-list__empty {
