@@ -1,3 +1,4 @@
+- Improve initial setup UX
 - Inline video, audio and pdf viewers
 - Win 3.1 / Win 95 themes
 - Search support for sidebar
