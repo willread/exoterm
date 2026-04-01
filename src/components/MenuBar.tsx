@@ -138,7 +138,7 @@ export const MenuBar: Component = () => {
             </div>
             <div class="dropdown__separator" />
             <div class="dropdown__item" onClick={() => {
-              const next = Math.min(fontSize() + 2, 24);
+              const next = Math.min(fontSize() + 2, 32);
               setFontSize(next);
               document.documentElement.style.setProperty("--font-size", next + "px");
               document.documentElement.style.setProperty("--char-h", next + "px");
@@ -146,7 +146,7 @@ export const MenuBar: Component = () => {
               Zoom In (+)
             </div>
             <div class="dropdown__item" onClick={() => {
-              const next = Math.max(fontSize() - 2, 10);
+              const next = Math.max(fontSize() - 2, 8);
               setFontSize(next);
               document.documentElement.style.setProperty("--font-size", next + "px");
               document.documentElement.style.setProperty("--char-h", next + "px");
