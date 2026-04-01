@@ -51,6 +51,15 @@ export async function getGameImages(id: number): Promise<GameImage[]> {
   return invoke("get_game_images", { id });
 }
 
+export interface GameVideo {
+  name: string;
+  path: string;
+}
+
+export async function getGameVideos(id: number): Promise<GameVideo[]> {
+  return invoke("get_game_videos", { id });
+}
+
 export async function toggleFavorite(id: number): Promise<boolean> {
   return invoke("toggle_favorite", { id });
 }

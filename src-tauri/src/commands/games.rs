@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use tauri::State;
 
 use crate::db::queries;
-use crate::models::{FilterOptions, Game, GameImage, SearchResult};
+use crate::models::{FilterOptions, Game, GameImage, GameVideo, SearchResult};
 use crate::state::AppState;
 
 #[tauri::command(rename_all = "snake_case")]
@@ -158,6 +158,69 @@ pub fn get_game_images(state: State<AppState>, id: i64) -> Result<Vec<GameImage>
         }
         if results.len() >= 2 {
             break; // box art + one screenshot is enough
+        }
+    }
+
+    Ok(results)
+}
+
+const VIDEO_EXTENSIONS: &[&str] = &["mp4", "avi", "mkv", "mov", "wmv", "webm", "m4v", "ogv", "flv"];
+
+#[tauri::command]
+pub fn get_game_videos(state: State<AppState>, id: i64) -> Result<Vec<GameVideo>, String> {
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+
+    let (app_path, collection_path): (String, String) = db
+        .query_row(
+            "SELECT g.application_path, c.path
+             FROM games g
+             JOIN collections c ON g.collection_id = c.id
+             WHERE g.id = ?",
+            [id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .map_err(|e| e.to_string())?;
+    drop(db);
+
+    // Derive game folder from application_path: "eXo\!dos\GameName\GameName.bat" -> "GameName"
+    let path_buf = PathBuf::from(&app_path);
+    let segments: Vec<_> = path_buf.components().collect();
+    let game_folder = if segments.len() >= 3 {
+        segments[segments.len() - 2]
+            .as_os_str()
+            .to_string_lossy()
+            .to_string()
+    } else {
+        return Ok(vec![]);
+    };
+
+    let collection_root = PathBuf::from(&collection_path);
+    let mut results = Vec::new();
+
+    // Search in Videos/{game_folder}/ then Extras/{game_folder}/ (LaunchBox standard locations)
+    for subdir in &["Videos", "Extras"] {
+        let dir = collection_root.join(subdir).join(&game_folder);
+        if dir.is_dir() {
+            let mut entries: Vec<_> = std::fs::read_dir(&dir)
+                .map(|rd| rd.flatten().collect())
+                .unwrap_or_default();
+            entries.sort_by_key(|e| e.file_name());
+            for entry in entries {
+                let path = entry.path();
+                if let Some(ext) = path.extension() {
+                    let ext_lower = ext.to_string_lossy().to_lowercase();
+                    if VIDEO_EXTENSIONS.contains(&ext_lower.as_str()) {
+                        let name = path
+                            .file_name()
+                            .map(|n| n.to_string_lossy().to_string())
+                            .unwrap_or_default();
+                        results.push(GameVideo {
+                            name,
+                            path: path.to_string_lossy().to_string(),
+                        });
+                    }
+                }
+            }
         }
     }
 

@@ -94,6 +94,12 @@ pub struct GameImage {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GameVideo {
+    pub name: String,
+    pub path: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScanProgress {
     pub current: usize,
     pub total_files: usize,
