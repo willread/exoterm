@@ -6,6 +6,10 @@
   font-display: block;
 }
 
+*, *::before, *::after {
+  border-radius: 0;
+}
+
 :root {
   --font-dos: 'IBM VGA', monospace;
   --char-w: 9px;
