@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(npm test:*)",
-      "Bash(npx vitest:*)",
-      "mcp__Claude_Preview__preview_start"
-    ]
-  }
-}

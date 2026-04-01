@@ -3,25 +3,19 @@ import { setSearchQuery, setFilters, setSelectedIndex } from "../lib/store";
 
 export const SearchBar: Component = () => {
   let inputRef: HTMLInputElement | undefined;
-  let debounceTimer: number | undefined;
   const [hasText, setHasText] = createSignal(false);
 
   const handleInput = (value: string) => {
     setHasText(value.length > 0);
-    if (debounceTimer) clearTimeout(debounceTimer);
-    debounceTimer = window.setTimeout(() => {
-      setSearchQuery(value);
-      setFilters("offset", 0);
-      setSelectedIndex(0);
-    }, 150);
+  };
+
+  const commitSearch = (value: string) => {
+    setSearchQuery(value);
+    setFilters("offset", 0);
+    setSelectedIndex(0);
   };
 
   const clearSearch = (refocus = true) => {
-    // Cancel any pending debounce so stale query doesn't reapply
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
-      debounceTimer = undefined;
-    }
     if (inputRef) {
       inputRef.value = "";
       if (refocus) inputRef.focus();
@@ -49,6 +43,7 @@ export const SearchBar: Component = () => {
             clearSearch();
             e.currentTarget.blur();
           } else if (e.key === "Enter") {
+            commitSearch(e.currentTarget.value);
             e.currentTarget.blur();
           }
         }}
