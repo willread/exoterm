@@ -17,6 +17,8 @@ import {
   gameList,
   selectedIndex,
   setSelectedIndex,
+  activePanel,
+  setActivePanel,
 
   fetchGames,
   sidebarWidth,
@@ -95,13 +97,33 @@ const App: Component = () => {
       },
     });
 
+    // ── Left/Right: switch between sidebar and list ──
+    registerKey({
+      key: "ArrowLeft",
+      context: "global",
+      handler: () => {
+        if (activePanel() !== "sidebar") setActivePanel("sidebar");
+      },
+    });
+
+    registerKey({
+      key: "ArrowRight",
+      context: "global",
+      handler: () => {
+        if (activePanel() !== "list") setActivePanel("list");
+      },
+    });
+
+    // ── Up/Down: context-aware navigation ──
     registerKey({
       key: "ArrowDown",
       context: "global",
       handler: () => {
-        const max = gameList().length - 1;
-        if (selectedIndex() < max) {
-          setSelectedIndex(selectedIndex() + 1);
+        if (activePanel() === "sidebar") {
+          (window as any).__sidebarNav?.moveDown();
+        } else {
+          const max = gameList().length - 1;
+          if (selectedIndex() < max) setSelectedIndex(selectedIndex() + 1);
         }
       },
     });
@@ -110,8 +132,10 @@ const App: Component = () => {
       key: "ArrowUp",
       context: "global",
       handler: () => {
-        if (selectedIndex() > 0) {
-          setSelectedIndex(selectedIndex() - 1);
+        if (activePanel() === "sidebar") {
+          (window as any).__sidebarNav?.moveUp();
+        } else {
+          if (selectedIndex() > 0) setSelectedIndex(selectedIndex() - 1);
         }
       },
     });
@@ -120,8 +144,12 @@ const App: Component = () => {
       key: "PageDown",
       context: "global",
       handler: () => {
-        const max = gameList().length - 1;
-        setSelectedIndex(Math.min(selectedIndex() + 20, max));
+        if (activePanel() === "sidebar") {
+          (window as any).__sidebarNav?.pageDown();
+        } else {
+          const max = gameList().length - 1;
+          setSelectedIndex(Math.min(selectedIndex() + 20, max));
+        }
       },
     });
 
@@ -129,30 +157,51 @@ const App: Component = () => {
       key: "PageUp",
       context: "global",
       handler: () => {
-        setSelectedIndex(Math.max(selectedIndex() - 20, 0));
+        if (activePanel() === "sidebar") {
+          (window as any).__sidebarNav?.pageUp();
+        } else {
+          setSelectedIndex(Math.max(selectedIndex() - 20, 0));
+        }
       },
     });
 
     registerKey({
       key: "Home",
       context: "global",
-      handler: () => setSelectedIndex(0),
+      handler: () => {
+        if (activePanel() === "sidebar") {
+          (window as any).__sidebarNav?.home();
+        } else {
+          setSelectedIndex(0);
+        }
+      },
     });
 
     registerKey({
       key: "End",
       context: "global",
-      handler: () => setSelectedIndex(gameList().length - 1),
+      handler: () => {
+        if (activePanel() === "sidebar") {
+          (window as any).__sidebarNav?.end();
+        } else {
+          setSelectedIndex(gameList().length - 1);
+        }
+      },
     });
 
+    // ── Enter: context-aware ──
     registerKey({
       key: "Enter",
       context: "global",
       handler: () => {
-        const games = gameList();
-        const idx = selectedIndex();
-        if (games[idx]) {
-          guardedLaunch(() => launchGame(games[idx].id));
+        if (activePanel() === "sidebar") {
+          (window as any).__sidebarNav?.activate();
+        } else {
+          const games = gameList();
+          const idx = selectedIndex();
+          if (games[idx]) {
+            guardedLaunch(() => launchGame(games[idx].id));
+          }
         }
       },
     });

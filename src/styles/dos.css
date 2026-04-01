@@ -347,6 +347,11 @@ body {
   color: var(--fg-highlight);
 }
 
+.sidebar__item--focused {
+  outline: 1px solid var(--fg-primary);
+  outline-offset: -1px;
+}
+
 
 /* ── Game List ────────────────────────────────── */
 .game-list {
@@ -392,6 +397,7 @@ body {
 .game-list__body {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
 }
 
@@ -436,6 +442,7 @@ body {
   top: 0;
   left: 0;
   right: 0;
+  overflow: hidden;
 }
 
 .game-list__empty {
@@ -482,6 +489,11 @@ body {
   caret-color: var(--fg-primary);
   user-select: text;
   -webkit-user-select: text;
+}
+
+.search-bar__input::placeholder {
+  color: var(--fg-secondary);
+  opacity: 1;
 }
 
 .search-bar__clear {
@@ -599,6 +611,10 @@ body {
   cursor: pointer;
   text-align: center;
   letter-spacing: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: var(--char-h);
 }
 
 .detail-panel__play-btn:hover {

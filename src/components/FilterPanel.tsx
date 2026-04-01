@@ -1,4 +1,4 @@
-import { Component, For, Show, createSignal, createEffect } from "solid-js";
+import { Component, For, Show, createSignal, createEffect, createMemo, onMount, onCleanup } from "solid-js";
 import { createStore } from "solid-js/store";
 import {
   filters,
@@ -6,6 +6,7 @@ import {
   filterOptions,
   fetchFilterOptions,
   setSelectedIndex,
+  activePanel,
 } from "../lib/store";
 
 // ── Genre tree building ──────────────────────────────────────────────────────
@@ -77,6 +78,15 @@ function applyYearFilter(value: number) {
 
 type SectionKey = "platform" | "genre" | "year" | "developer" | "publisher" | "series";
 
+// ── Navigable item types ─────────────────────────────────────────────────────
+type NavItem =
+  | { type: "reset" }
+  | { type: "favorites" }
+  | { type: "section-header"; key: SectionKey; label: string; selected: string | number | null }
+  | { type: "item"; field: "genre" | "developer" | "publisher" | "series" | "platform"; value: string; label: string }
+  | { type: "year-item"; value: number }
+  | { type: "genre-group"; parent: string };
+
 // ── Main component ────────────────────────────────────────────────────────────
 export const FilterPanel: Component = () => {
   const [sectionOpen, setSectionOpen] = createStore<Record<SectionKey, boolean>>({
@@ -125,23 +135,149 @@ export const FilterPanel: Component = () => {
 
   const genreGroups = () => buildGenreGroups(opts().genres);
 
-  const SectionHdr = (props: { sectionKey: SectionKey; label: string; selected: string | number | null }) => (
-    <div
-      class="sidebar__section-header"
-      onClick={() => setSectionOpen(props.sectionKey, (v) => !v)}
-    >
-      <span class="sidebar__section-arrow">
-        {sectionOpen[props.sectionKey] ? "\u25BC" : "\u25B2"}
-      </span>
-      {" "}{sectionLabel(props.label, props.selected)}
-    </div>
-  );
+  // Sidebar cursor index
+  const [sidebarIndex, setSidebarIndex] = createSignal(0);
+
+  // Build flat list of navigable items
+  const navItems = createMemo((): NavItem[] => {
+    const items: NavItem[] = [];
+    const o = opts();
+
+    items.push({ type: "reset" });
+    items.push({ type: "favorites" });
+
+    if (o.platforms.length > 1) {
+      items.push({ type: "section-header", key: "platform", label: "Platform", selected: filters.platform || null });
+      if (sectionOpen.platform) {
+        for (const p of o.platforms) {
+          items.push({ type: "item", field: "platform", value: p, label: p });
+        }
+      }
+    }
+
+    if (o.genres.length > 0) {
+      items.push({ type: "section-header", key: "genre", label: "Genre", selected: filters.genre || null });
+      if (sectionOpen.genre) {
+        for (const group of genreGroups()) {
+          if (group.isFlat) {
+            items.push({ type: "item", field: "genre", value: group.parent, label: group.parent });
+          } else {
+            items.push({ type: "genre-group", parent: group.parent });
+            if (expandedGroups().has(group.parent)) {
+              for (const child of group.children) {
+                items.push({ type: "item", field: "genre", value: child.value, label: child.label });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (o.years.length > 0) {
+      items.push({ type: "section-header", key: "year", label: "Year", selected: filters.year });
+      if (sectionOpen.year) {
+        for (const y of o.years) {
+          items.push({ type: "year-item", value: y });
+        }
+      }
+    }
+
+    if (o.developers.length > 0) {
+      items.push({ type: "section-header", key: "developer", label: "Developer", selected: filters.developer || null });
+      if (sectionOpen.developer) {
+        for (const d of o.developers) {
+          items.push({ type: "item", field: "developer", value: d, label: d });
+        }
+      }
+    }
+
+    if (o.publishers.length > 0) {
+      items.push({ type: "section-header", key: "publisher", label: "Publisher", selected: filters.publisher || null });
+      if (sectionOpen.publisher) {
+        for (const p of o.publishers) {
+          items.push({ type: "item", field: "publisher", value: p, label: p });
+        }
+      }
+    }
+
+    if (o.series.length > 0) {
+      items.push({ type: "section-header", key: "series", label: "Series", selected: filters.series || null });
+      if (sectionOpen.series) {
+        for (const s of o.series) {
+          items.push({ type: "item", field: "series", value: s, label: s });
+        }
+      }
+    }
+
+    return items;
+  });
+
+  // Clamp sidebar index when nav items change
+  createEffect(() => {
+    const max = navItems().length - 1;
+    if (sidebarIndex() > max) setSidebarIndex(Math.max(0, max));
+  });
+
+  // Scroll focused item into view
+  let sidebarRef: HTMLDivElement | undefined;
+  createEffect(() => {
+    if (activePanel() !== "sidebar") return;
+    const idx = sidebarIndex();
+    const el = sidebarRef?.querySelector(`[data-sidebar-idx="${idx}"]`) as HTMLElement | null;
+    el?.scrollIntoView({ block: "nearest" });
+  });
+
+  // Execute action for the current nav item
+  const activateItem = (item: NavItem) => {
+    switch (item.type) {
+      case "reset":
+        if (hasActiveFilters()) resetAllFilters();
+        break;
+      case "favorites":
+        setFilters("favoritesOnly", !filters.favoritesOnly);
+        setFilters("offset", 0);
+        setSelectedIndex(0);
+        break;
+      case "section-header":
+        setSectionOpen(item.key, (v) => !v);
+        break;
+      case "item":
+        applyStringFilter(item.field, item.value);
+        break;
+      case "year-item":
+        applyYearFilter(item.value);
+        break;
+      case "genre-group":
+        toggleGroup(item.parent);
+        break;
+    }
+  };
+
+  // Expose navigation helpers on window for App.tsx keyboard handler
+  onMount(() => {
+    (window as any).__sidebarNav = {
+      moveUp: () => setSidebarIndex((i) => Math.max(0, i - 1)),
+      moveDown: () => setSidebarIndex((i) => Math.min(navItems().length - 1, i + 1)),
+      pageUp: () => setSidebarIndex((i) => Math.max(0, i - 20)),
+      pageDown: () => setSidebarIndex((i) => Math.min(navItems().length - 1, i + 20)),
+      home: () => setSidebarIndex(0),
+      end: () => setSidebarIndex(navItems().length - 1),
+      activate: () => {
+        const item = navItems()[sidebarIndex()];
+        if (item) activateItem(item);
+      },
+    };
+  });
+  onCleanup(() => { delete (window as any).__sidebarNav; });
+
+  const isFocused = (idx: number) => activePanel() === "sidebar" && sidebarIndex() === idx;
 
   return (
-    <div class="sidebar" tabindex="-1">
-      {/* Reset Filters button — always at the very top */}
+    <div class="sidebar" tabindex="-1" ref={sidebarRef}>
+      {/* Reset Filters button */}
       <div
-        class={`sidebar__reset-btn${hasActiveFilters() ? "" : " sidebar__reset-btn--disabled"}`}
+        class={`sidebar__reset-btn${hasActiveFilters() ? "" : " sidebar__reset-btn--disabled"}${isFocused(0) ? " sidebar__item--focused" : ""}`}
+        data-sidebar-idx={0}
         onClick={() => { if (hasActiveFilters()) resetAllFilters(); }}
       >
         Reset Filters
@@ -149,7 +285,8 @@ export const FilterPanel: Component = () => {
 
       {/* Favorites toggle */}
       <div
-        class={`sidebar__section-header${filters.favoritesOnly ? " sidebar__section-header--active" : ""}`}
+        class={`sidebar__section-header${filters.favoritesOnly ? " sidebar__section-header--active" : ""}${isFocused(1) ? " sidebar__item--focused" : ""}`}
+        data-sidebar-idx={1}
         onClick={() => {
           setFilters("favoritesOnly", !filters.favoritesOnly);
           setFilters("offset", 0);
@@ -161,18 +298,33 @@ export const FilterPanel: Component = () => {
 
       {/* Platform section */}
       <Show when={opts().platforms.length > 1}>
-        <SectionHdr sectionKey="platform" label="Platform" selected={filters.platform || null} />
+        <SectionHdrFocused
+          sectionKey="platform"
+          label="Platform"
+          selected={filters.platform || null}
+          sectionOpen={sectionOpen}
+          setSectionOpen={setSectionOpen}
+          navItems={navItems}
+          sidebarIndex={sidebarIndex}
+          activePanel={activePanel}
+        />
         <Show when={sectionOpen.platform}>
           <div class="sidebar__section">
             <For each={opts().platforms}>
-              {(p) => (
-                <div
-                  class={`sidebar__item ${filters.platform === p ? "sidebar__item--active" : ""}`}
-                  onClick={() => applyStringFilter("platform", p)}
-                >
-                  {p}
-                </div>
-              )}
+              {(p) => {
+                const idx = createMemo(() => navItems().findIndex(
+                  (n) => n.type === "item" && n.field === "platform" && n.value === p
+                ));
+                return (
+                  <div
+                    class={`sidebar__item ${filters.platform === p ? "sidebar__item--active" : ""}${isFocused(idx()) ? " sidebar__item--focused" : ""}`}
+                    data-sidebar-idx={idx()}
+                    onClick={() => applyStringFilter("platform", p)}
+                  >
+                    {p}
+                  </div>
+                );
+              }}
             </For>
           </div>
         </Show>
@@ -180,37 +332,68 @@ export const FilterPanel: Component = () => {
 
       {/* Genre section */}
       <Show when={opts().genres.length > 0}>
-        <SectionHdr sectionKey="genre" label="Genre" selected={filters.genre || null} />
+        <SectionHdrFocused
+          sectionKey="genre"
+          label="Genre"
+          selected={filters.genre || null}
+          sectionOpen={sectionOpen}
+          setSectionOpen={setSectionOpen}
+          navItems={navItems}
+          sidebarIndex={sidebarIndex}
+          activePanel={activePanel}
+        />
         <Show when={sectionOpen.genre}>
           <div class="sidebar__section">
             <For each={genreGroups()}>
               {(group) => (
                 <>
                   {group.isFlat ? (
-                    <div
-                      class={`sidebar__item ${filters.genre === group.parent ? "sidebar__item--active" : ""}`}
-                      onClick={() => applyStringFilter("genre", group.parent)}
-                    >
-                      {group.parent}
-                    </div>
+                    (() => {
+                      const idx = createMemo(() => navItems().findIndex(
+                        (n) => n.type === "item" && n.field === "genre" && n.value === group.parent
+                      ));
+                      return (
+                        <div
+                          class={`sidebar__item ${filters.genre === group.parent ? "sidebar__item--active" : ""}${isFocused(idx()) ? " sidebar__item--focused" : ""}`}
+                          data-sidebar-idx={idx()}
+                          onClick={() => applyStringFilter("genre", group.parent)}
+                        >
+                          {group.parent}
+                        </div>
+                      );
+                    })()
                   ) : (
                     <>
-                      <div
-                        class="sidebar__group-header"
-                        onClick={() => toggleGroup(group.parent)}
-                      >
-                        {expandedGroups().has(group.parent) ? "\u25BC" : "\u25B2"} {group.parent}
-                      </div>
+                      {(() => {
+                        const idx = createMemo(() => navItems().findIndex(
+                          (n) => n.type === "genre-group" && n.parent === group.parent
+                        ));
+                        return (
+                          <div
+                            class={`sidebar__group-header${isFocused(idx()) ? " sidebar__item--focused" : ""}`}
+                            data-sidebar-idx={idx()}
+                            onClick={() => toggleGroup(group.parent)}
+                          >
+                            {expandedGroups().has(group.parent) ? "\u25BC" : "\u25B2"} {group.parent}
+                          </div>
+                        );
+                      })()}
                       <Show when={expandedGroups().has(group.parent)}>
                         <For each={group.children}>
-                          {(child) => (
-                            <div
-                              class={`sidebar__item sidebar__item--indent ${filters.genre === child.value ? "sidebar__item--active" : ""}`}
-                              onClick={() => applyStringFilter("genre", child.value)}
-                            >
-                              {child.label}
-                            </div>
-                          )}
+                          {(child) => {
+                            const idx = createMemo(() => navItems().findIndex(
+                              (n) => n.type === "item" && n.field === "genre" && n.value === child.value
+                            ));
+                            return (
+                              <div
+                                class={`sidebar__item sidebar__item--indent ${filters.genre === child.value ? "sidebar__item--active" : ""}${isFocused(idx()) ? " sidebar__item--focused" : ""}`}
+                                data-sidebar-idx={idx()}
+                                onClick={() => applyStringFilter("genre", child.value)}
+                              >
+                                {child.label}
+                              </div>
+                            );
+                          }}
                         </For>
                       </Show>
                     </>
@@ -224,18 +407,33 @@ export const FilterPanel: Component = () => {
 
       {/* Year section */}
       <Show when={opts().years.length > 0}>
-        <SectionHdr sectionKey="year" label="Year" selected={filters.year} />
+        <SectionHdrFocused
+          sectionKey="year"
+          label="Year"
+          selected={filters.year}
+          sectionOpen={sectionOpen}
+          setSectionOpen={setSectionOpen}
+          navItems={navItems}
+          sidebarIndex={sidebarIndex}
+          activePanel={activePanel}
+        />
         <Show when={sectionOpen.year}>
           <div class="sidebar__section">
             <For each={opts().years}>
-              {(y) => (
-                <div
-                  class={`sidebar__item ${filters.year === y ? "sidebar__item--active" : ""}`}
-                  onClick={() => applyYearFilter(y)}
-                >
-                  {y}
-                </div>
-              )}
+              {(y) => {
+                const idx = createMemo(() => navItems().findIndex(
+                  (n) => n.type === "year-item" && n.value === y
+                ));
+                return (
+                  <div
+                    class={`sidebar__item ${filters.year === y ? "sidebar__item--active" : ""}${isFocused(idx()) ? " sidebar__item--focused" : ""}`}
+                    data-sidebar-idx={idx()}
+                    onClick={() => applyYearFilter(y)}
+                  >
+                    {y}
+                  </div>
+                );
+              }}
             </For>
           </div>
         </Show>
@@ -243,18 +441,33 @@ export const FilterPanel: Component = () => {
 
       {/* Developer section */}
       <Show when={opts().developers.length > 0}>
-        <SectionHdr sectionKey="developer" label="Developer" selected={filters.developer || null} />
+        <SectionHdrFocused
+          sectionKey="developer"
+          label="Developer"
+          selected={filters.developer || null}
+          sectionOpen={sectionOpen}
+          setSectionOpen={setSectionOpen}
+          navItems={navItems}
+          sidebarIndex={sidebarIndex}
+          activePanel={activePanel}
+        />
         <Show when={sectionOpen.developer}>
           <div class="sidebar__section">
             <For each={opts().developers}>
-              {(d) => (
-                <div
-                  class={`sidebar__item ${filters.developer === d ? "sidebar__item--active" : ""}`}
-                  onClick={() => applyStringFilter("developer", d)}
-                >
-                  {d}
-                </div>
-              )}
+              {(d) => {
+                const idx = createMemo(() => navItems().findIndex(
+                  (n) => n.type === "item" && n.field === "developer" && n.value === d
+                ));
+                return (
+                  <div
+                    class={`sidebar__item ${filters.developer === d ? "sidebar__item--active" : ""}${isFocused(idx()) ? " sidebar__item--focused" : ""}`}
+                    data-sidebar-idx={idx()}
+                    onClick={() => applyStringFilter("developer", d)}
+                  >
+                    {d}
+                  </div>
+                );
+              }}
             </For>
           </div>
         </Show>
@@ -262,18 +475,33 @@ export const FilterPanel: Component = () => {
 
       {/* Publisher section */}
       <Show when={opts().publishers.length > 0}>
-        <SectionHdr sectionKey="publisher" label="Publisher" selected={filters.publisher || null} />
+        <SectionHdrFocused
+          sectionKey="publisher"
+          label="Publisher"
+          selected={filters.publisher || null}
+          sectionOpen={sectionOpen}
+          setSectionOpen={setSectionOpen}
+          navItems={navItems}
+          sidebarIndex={sidebarIndex}
+          activePanel={activePanel}
+        />
         <Show when={sectionOpen.publisher}>
           <div class="sidebar__section">
             <For each={opts().publishers}>
-              {(p) => (
-                <div
-                  class={`sidebar__item ${filters.publisher === p ? "sidebar__item--active" : ""}`}
-                  onClick={() => applyStringFilter("publisher", p)}
-                >
-                  {p}
-                </div>
-              )}
+              {(p) => {
+                const idx = createMemo(() => navItems().findIndex(
+                  (n) => n.type === "item" && n.field === "publisher" && n.value === p
+                ));
+                return (
+                  <div
+                    class={`sidebar__item ${filters.publisher === p ? "sidebar__item--active" : ""}${isFocused(idx()) ? " sidebar__item--focused" : ""}`}
+                    data-sidebar-idx={idx()}
+                    onClick={() => applyStringFilter("publisher", p)}
+                  >
+                    {p}
+                  </div>
+                );
+              }}
             </For>
           </div>
         </Show>
@@ -281,22 +509,67 @@ export const FilterPanel: Component = () => {
 
       {/* Series section */}
       <Show when={opts().series.length > 0}>
-        <SectionHdr sectionKey="series" label="Series" selected={filters.series || null} />
+        <SectionHdrFocused
+          sectionKey="series"
+          label="Series"
+          selected={filters.series || null}
+          sectionOpen={sectionOpen}
+          setSectionOpen={setSectionOpen}
+          navItems={navItems}
+          sidebarIndex={sidebarIndex}
+          activePanel={activePanel}
+        />
         <Show when={sectionOpen.series}>
           <div class="sidebar__section">
             <For each={opts().series}>
-              {(s) => (
-                <div
-                  class={`sidebar__item ${filters.series === s ? "sidebar__item--active" : ""}`}
-                  onClick={() => applyStringFilter("series", s)}
-                >
-                  {s}
-                </div>
-              )}
+              {(s) => {
+                const idx = createMemo(() => navItems().findIndex(
+                  (n) => n.type === "item" && n.field === "series" && n.value === s
+                ));
+                return (
+                  <div
+                    class={`sidebar__item ${filters.series === s ? "sidebar__item--active" : ""}${isFocused(idx()) ? " sidebar__item--focused" : ""}`}
+                    data-sidebar-idx={idx()}
+                    onClick={() => applyStringFilter("series", s)}
+                  >
+                    {s}
+                  </div>
+                );
+              }}
             </For>
           </div>
         </Show>
       </Show>
+    </div>
+  );
+};
+
+// Helper component for section headers with focus tracking
+const SectionHdrFocused = (props: {
+  sectionKey: SectionKey;
+  label: string;
+  selected: string | number | null;
+  sectionOpen: Record<SectionKey, boolean>;
+  setSectionOpen: any;
+  navItems: () => NavItem[];
+  sidebarIndex: () => number;
+  activePanel: () => string;
+}) => {
+  const idx = createMemo(() => props.navItems().findIndex(
+    (n) => n.type === "section-header" && n.key === props.sectionKey
+  ));
+  const isFocused = () => props.activePanel() === "sidebar" && props.sidebarIndex() === idx();
+
+  return (
+    <div
+      class={`sidebar__section-header${isFocused() ? " sidebar__item--focused" : ""}`}
+      data-sidebar-idx={idx()}
+      onClick={() => props.setSectionOpen(props.sectionKey, (v: boolean) => !v)}
+    >
+      <span class="sidebar__section-arrow">
+        {props.sectionOpen[props.sectionKey] ? "\u25BC" : "\u25B2"}
+      </span>
+      {" "}{sectionLabel(props.label, props.selected)}
     </div>
   );
 };

@@ -5,7 +5,7 @@ import type { SortDir, SortField, Theme, GameSummary, FilterOptions } from "./ty
 
 // ── App state ──────────────────────────────────
 export const [theme, setTheme] = createSignal<Theme>("blue");
-export const [crtEnabled, setCrtEnabled] = createSignal(true);
+export const [crtEnabled, setCrtEnabled] = createSignal(false);
 export const [activePanel, setActivePanel] = createSignal<"sidebar" | "list" | "detail">("list");
 export const [fontSize, setFontSize] = createSignal(16); // px, default 16
 
