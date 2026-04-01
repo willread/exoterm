@@ -7,6 +7,7 @@ import {
   setFilters,
   setSelectedIndex,
   setFilterOptions,
+  setActivePanel,
 } from "../lib/store";
 
 const mockInvoke = vi.mocked(invoke);
@@ -48,12 +49,14 @@ beforeEach(() => {
     return null;
   });
   resetFilters();
+  setActivePanel("list");
 });
 
 afterEach(() => {
   dispose?.();
   dispose = undefined;
   document.body.innerHTML = "";
+  delete (window as any).__sidebarNav;
 });
 
 // ── Platform section (expanded by default) ────────────────────────────────────
@@ -549,5 +552,142 @@ describe("FilterPanel Reset Filters button", () => {
     resetBtn.click();
 
     expect(resetBtn.classList.contains("sidebar__reset-btn--disabled")).toBe(true);
+  });
+});
+
+// ── Sidebar keyboard navigation ──────────────────────────────────────────────
+
+describe("FilterPanel sidebar keyboard navigation", () => {
+  it("exposes __sidebarNav on window after mount", () => {
+    populateFilterOptions();
+    dispose = render(() => <FilterPanel />, document.body);
+    const nav = (window as any).__sidebarNav;
+    expect(nav).toBeDefined();
+    expect(typeof nav.moveUp).toBe("function");
+    expect(typeof nav.moveDown).toBe("function");
+    expect(typeof nav.activate).toBe("function");
+    expect(typeof nav.pageUp).toBe("function");
+    expect(typeof nav.pageDown).toBe("function");
+    expect(typeof nav.home).toBe("function");
+    expect(typeof nav.end).toBe("function");
+  });
+
+  it("moveDown advances the focused item", () => {
+    setActivePanel("sidebar");
+    populateFilterOptions();
+    dispose = render(() => <FilterPanel />, document.body);
+
+    // Initially index 0 (Reset Filters) is focused
+    const resetBtn = document.querySelector("[data-sidebar-idx='0']");
+    expect(resetBtn?.classList.contains("sidebar__item--focused")).toBe(true);
+
+    (window as any).__sidebarNav.moveDown();
+
+    // Now index 1 (Favorites) should be focused
+    const favItem = document.querySelector("[data-sidebar-idx='1']");
+    expect(favItem?.classList.contains("sidebar__item--focused")).toBe(true);
+    expect(resetBtn?.classList.contains("sidebar__item--focused")).toBe(false);
+  });
+
+  it("moveUp does not go below 0", () => {
+    setActivePanel("sidebar");
+    populateFilterOptions();
+    dispose = render(() => <FilterPanel />, document.body);
+
+    (window as any).__sidebarNav.moveUp();
+
+    const resetBtn = document.querySelector("[data-sidebar-idx='0']");
+    expect(resetBtn?.classList.contains("sidebar__item--focused")).toBe(true);
+  });
+
+  it("activate on a section header toggles expand/collapse", () => {
+    setActivePanel("sidebar");
+    populateFilterOptions();
+    dispose = render(() => <FilterPanel />, document.body);
+
+    const nav = (window as any).__sidebarNav;
+
+    // Navigate to Platform header (idx 2 — after Reset and Favorites)
+    nav.moveDown(); // -> Favorites
+    nav.moveDown(); // -> Platform header
+
+    // Platform starts expanded; activate should collapse it
+    let dosItem = Array.from(document.querySelectorAll(".sidebar__item")).find(
+      (i) => i.textContent?.trim() === "MS-DOS"
+    );
+    expect(dosItem).not.toBeUndefined();
+
+    nav.activate();
+
+    dosItem = Array.from(document.querySelectorAll(".sidebar__item")).find(
+      (i) => i.textContent?.trim() === "MS-DOS"
+    );
+    expect(dosItem).toBeUndefined();
+
+    // Activate again should expand
+    nav.activate();
+    dosItem = Array.from(document.querySelectorAll(".sidebar__item")).find(
+      (i) => i.textContent?.trim() === "MS-DOS"
+    );
+    expect(dosItem).not.toBeUndefined();
+  });
+
+  it("activate on a filter item selects it", () => {
+    setActivePanel("sidebar");
+    populateFilterOptions();
+    dispose = render(() => <FilterPanel />, document.body);
+
+    const nav = (window as any).__sidebarNav;
+
+    // Navigate to first platform item: Reset(0), Favorites(1), Platform header(2), MS-DOS(3)
+    nav.moveDown();
+    nav.moveDown();
+    nav.moveDown();
+    nav.activate();
+
+    expect(filters.platform).toBe("MS-DOS");
+  });
+
+  it("activate on Favorites toggles favoritesOnly", () => {
+    setActivePanel("sidebar");
+    populateFilterOptions();
+    dispose = render(() => <FilterPanel />, document.body);
+
+    const nav = (window as any).__sidebarNav;
+    nav.moveDown(); // -> Favorites
+    nav.activate();
+
+    expect(filters.favoritesOnly).toBe(true);
+
+    nav.activate();
+    expect(filters.favoritesOnly).toBe(false);
+  });
+
+  it("home jumps to first item, end jumps to last", () => {
+    setActivePanel("sidebar");
+    populateFilterOptions();
+    dispose = render(() => <FilterPanel />, document.body);
+
+    const nav = (window as any).__sidebarNav;
+    nav.end();
+
+    // Last item should be focused
+    const allItems = document.querySelectorAll("[data-sidebar-idx]");
+    const lastIdx = allItems[allItems.length - 1]?.getAttribute("data-sidebar-idx");
+    const lastItem = document.querySelector(`[data-sidebar-idx='${lastIdx}']`);
+    expect(lastItem?.classList.contains("sidebar__item--focused")).toBe(true);
+
+    nav.home();
+    const firstItem = document.querySelector("[data-sidebar-idx='0']");
+    expect(firstItem?.classList.contains("sidebar__item--focused")).toBe(true);
+  });
+
+  it("focused class is not applied when activePanel is not sidebar", () => {
+    setActivePanel("list");
+    populateFilterOptions();
+    dispose = render(() => <FilterPanel />, document.body);
+
+    const resetBtn = document.querySelector("[data-sidebar-idx='0']");
+    expect(resetBtn?.classList.contains("sidebar__item--focused")).toBe(false);
   });
 });

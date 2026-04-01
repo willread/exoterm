@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render } from "solid-js/web";
 import { SearchBar } from "../components/SearchBar";
-import { searchQuery, setSearchQuery, setFilters, setSelectedIndex } from "../lib/store";
+import { searchQuery, setSearchQuery, setFilters, setSelectedIndex, searchFocused, setSearchFocused } from "../lib/store";
 
 let dispose: (() => void) | undefined;
 
@@ -9,6 +9,7 @@ beforeEach(() => {
   setSearchQuery("");
   setFilters("offset", 0);
   setSelectedIndex(0);
+  setSearchFocused(false);
 });
 
 afterEach(() => {
@@ -102,5 +103,20 @@ describe("SearchBar", () => {
   it("does not render a search label", () => {
     dispose = render(() => <SearchBar />, document.body);
     expect(document.querySelector(".search-bar__label")).toBeNull();
+  });
+
+  it("sets searchFocused to true on focus", () => {
+    dispose = render(() => <SearchBar />, document.body);
+    const input = document.querySelector(".search-bar__input") as HTMLInputElement;
+    input.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+    expect(searchFocused()).toBe(true);
+  });
+
+  it("sets searchFocused to false on blur", () => {
+    setSearchFocused(true);
+    dispose = render(() => <SearchBar />, document.body);
+    const input = document.querySelector(".search-bar__input") as HTMLInputElement;
+    input.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
+    expect(searchFocused()).toBe(false);
   });
 });
