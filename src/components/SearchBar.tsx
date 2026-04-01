@@ -42,6 +42,8 @@ export const SearchBar: Component = () => {
           if (e.key === "Escape") {
             clearSearch();
             e.currentTarget.blur();
+          } else if (e.key === "Enter") {
+            e.currentTarget.blur();
           }
         }}
         placeholder="Type to search..."
