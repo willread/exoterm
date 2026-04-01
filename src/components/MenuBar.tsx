@@ -3,7 +3,7 @@ import { activeMenu, setActiveMenu, setActiveDialog, theme, setTheme, crtEnabled
 import type { Theme } from "../lib/types";
 
 const THEMES: { label: string; value: Theme }[] = [
-  { label: "Blue (EDIT.COM)", value: "blue" },
+  { label: "Big Blue", value: "blue" },
   { label: "Black & White", value: "bw" },
   { label: "Amber Phosphor", value: "amber" },
   { label: "Green Phosphor", value: "green" },
@@ -98,7 +98,7 @@ export const MenuBar: Component = () => {
               onMouseEnter={() => setThemeSubmenuOpen(true)}
               onMouseLeave={() => setThemeSubmenuOpen(false)}
             >
-              {"Theme  \u25B6"}
+              {"Theme \u25B2"}
               <Show when={themeSubmenuOpen()}>
                 <div class="dropdown dropdown--submenu">
                   <For each={THEMES}>
@@ -107,7 +107,7 @@ export const MenuBar: Component = () => {
                         class={`dropdown__item ${theme() === t.value ? "dropdown__item--active" : ""}`}
                         onClick={() => selectTheme(t.value)}
                       >
-                        {theme() === t.value ? "\u2713 " : "  "}{t.label}
+                        <span style={`display: inline-block; width: 2ch; ${theme() === t.value ? "" : "visibility: hidden"}`}>{"\u2713"}</span>{t.label}
                       </div>
                     )}
                   </For>
