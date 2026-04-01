@@ -24,7 +24,7 @@ describe("SearchBar", () => {
     dispose = render(() => <SearchBar />, document.body);
     const input = document.querySelector(".search-bar__input") as HTMLInputElement;
     expect(input).not.toBeNull();
-    expect(input.placeholder).toBe("Type to search...");
+    expect(input.placeholder).toBe("/ to search...");
     expect(input.type).toBe("text");
   });
 
@@ -99,8 +99,8 @@ describe("SearchBar", () => {
     expect(focusSpy).toHaveBeenCalledOnce();
   });
 
-  it("renders the 'Search:' label", () => {
+  it("does not render a search label", () => {
     dispose = render(() => <SearchBar />, document.body);
-    expect(document.querySelector(".search-bar__label")?.textContent).toBe("Search:");
+    expect(document.querySelector(".search-bar__label")).toBeNull();
   });
 });

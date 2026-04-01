@@ -32,7 +32,6 @@ export const SearchBar: Component = () => {
 
   return (
     <div class="search-bar" onClick={() => inputRef?.focus()}>
-      <div class="search-bar__label">Search:</div>
       <input
         ref={inputRef}
         class="search-bar__input"
@@ -47,7 +46,7 @@ export const SearchBar: Component = () => {
             e.currentTarget.blur();
           }
         }}
-        placeholder="Type to search..."
+        placeholder="/ to search..."
         spellcheck={false}
         autocomplete="off"
       />
