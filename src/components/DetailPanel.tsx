@@ -1,8 +1,10 @@
 import { Component, Show, createResource, createSignal } from "solid-js";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { selectedGame, gameList, selectedIndex } from "../lib/store";
-import { getGameImages, launchGame } from "../lib/commands";
+import { getGameImages, getGameVideos, launchGame } from "../lib/commands";
 import { guardedLaunch } from "../lib/keyboard";
 import type { GameImage } from "../lib/commands";
+import { VideoPlayer } from "./VideoPlayer";
 
 /** Quantize each RGB channel to 6-bit precision (VGA DAC), giving a 256-color-era look. */
 function applyVgaQuantize(img: HTMLImageElement): string {
@@ -49,11 +51,30 @@ const BoxArt: Component<{ image: GameImage; quantize: boolean }> = (props) => {
 export const DetailPanel: Component = () => {
   const game = () => selectedGame();
   const [quantize, setQuantize] = createSignal(true);
+  const [videoIndex, setVideoIndex] = createSignal(0);
 
   const [images] = createResource(
     () => game()?.id,
     (id) => (id ? getGameImages(id) : Promise.resolve([] as GameImage[]))
   );
+
+  const [videos] = createResource(
+    () => game()?.id,
+    async (id) => {
+      if (!id) return [];
+      const raw = await getGameVideos(id);
+      return raw.map((v) => ({ ...v, src: convertFileSrc(v.path) }));
+      // v.source ("bat" | "dir") passes through via spread
+    }
+  );
+
+  // Reset video index when game changes
+  const currentVideo = () => {
+    const vs = videos();
+    if (!vs || vs.length === 0) return null;
+    const idx = Math.min(videoIndex(), vs.length - 1);
+    return vs[idx];
+  };
 
   const boxArt = () => images()?.[0] ?? null;
 
@@ -78,6 +99,32 @@ export const DetailPanel: Component = () => {
         {(g) => (
           <>
             <div class="detail-panel__title">{g().title}</div>
+
+            {/* Video player — shown when videos are found */}
+            <Show when={currentVideo()}>
+              {(vid) => (
+                <VideoPlayer
+                  src={vid().src}
+                  name={vid().name}
+                  source={vid().source}
+                  onPrev={
+                    videoIndex() > 0
+                      ? () => setVideoIndex((i) => i - 1)
+                      : undefined
+                  }
+                  onNext={
+                    videos() && videoIndex() < videos()!.length - 1
+                      ? () => setVideoIndex((i) => i + 1)
+                      : undefined
+                  }
+                  navLabel={
+                    videos() && videos()!.length > 1
+                      ? `${videoIndex() + 1}/${videos()!.length}`
+                      : undefined
+                  }
+                />
+              )}
+            </Show>
 
             {/* Box art */}
             <Show when={boxArt()}>

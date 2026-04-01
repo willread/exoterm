@@ -94,6 +94,14 @@ pub struct GameImage {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GameVideo {
+    pub name: String,
+    pub path: String,
+    /// "bat" = extracted from the game's launch script; "dir" = found in Videos/Extras directory
+    pub source: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScanProgress {
     pub current: usize,
     pub total_files: usize,

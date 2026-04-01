@@ -113,6 +113,82 @@
 }
 
 /* ═══════════════════════════════════════════════════
+   WINDOWS 95 THEME  (silver + teal desktop)
+   ═══════════════════════════════════════════════════ */
+[data-theme="win95"] {
+  --bg-primary: #008080;
+  --bg-secondary: #C0C0C0;
+  --bg-highlight: #000080;
+  --bg-menu: #C0C0C0;
+  --bg-menu-highlight: #000080;
+  --bg-dialog: #C0C0C0;
+  --bg-dialog-shadow: #404040;
+  --bg-input: #FFFFFF;
+  --bg-scrollbar: #808080;
+
+  --fg-primary: #000000;
+  --fg-secondary: #444444;
+  --fg-menu: #000000;
+  --fg-menu-highlight: #FFFFFF;
+  --fg-menu-hotkey: #000080;
+  --fg-dialog: #000000;
+  --fg-disabled: #808080;
+  --fg-hotkey: #FFFFFF;
+  --fg-highlight: #FFFFFF;
+  --fg-title: #000000;
+  --fg-border: #808080;
+  --fg-favorite: #000080;
+
+  --selection-bg: #000080;
+  --selection-fg: #FFFFFF;
+
+  --border-color: #808080;
+  --border-dialog: #808080;
+  --shadow-color: #404040;
+
+  --crt-glow-color: rgba(0, 0, 0, 0);
+  --crt-scanline-color: rgba(0, 0, 0, 0.08);
+}
+
+/* ═══════════════════════════════════════════════════
+   WINDOWS 3.X THEME  (navy Program Manager + gray dialogs)
+   ═══════════════════════════════════════════════════ */
+[data-theme="win3x"] {
+  --bg-primary: #000080;
+  --bg-secondary: #C0C0C0;
+  --bg-highlight: #000080;
+  --bg-menu: #C0C0C0;
+  --bg-menu-highlight: #000080;
+  --bg-dialog: #C0C0C0;
+  --bg-dialog-shadow: #000000;
+  --bg-input: #FFFFFF;
+  --bg-scrollbar: #808080;
+
+  --fg-primary: #000000;
+  --fg-secondary: #555555;
+  --fg-menu: #000000;
+  --fg-menu-highlight: #FFFFFF;
+  --fg-menu-hotkey: #000080;
+  --fg-dialog: #000000;
+  --fg-disabled: #808080;
+  --fg-hotkey: #FFFFFF;
+  --fg-highlight: #FFFFFF;
+  --fg-title: #FFFFFF;
+  --fg-border: #000000;
+  --fg-favorite: #000080;
+
+  --selection-bg: #000080;
+  --selection-fg: #FFFFFF;
+
+  --border-color: #808080;
+  --border-dialog: #000000;
+  --shadow-color: #000000;
+
+  --crt-glow-color: rgba(0, 0, 0, 0);
+  --crt-scanline-color: rgba(0, 0, 0, 0.12);
+}
+
+/* ═══════════════════════════════════════════════════
    GREEN PHOSPHOR THEME
    ═══════════════════════════════════════════════════ */
 [data-theme="green"] {
