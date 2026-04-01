@@ -25,6 +25,7 @@ import {
   setDetailWidth,
   fontSize,
   filters,
+  setFilters,
   getPersistedState,
   restorePersistedState,
 } from "./lib/store";
@@ -77,9 +78,21 @@ const App: Component = () => {
         } else if (activeMenu()) {
           setActiveMenu(null);
         } else {
+          // Clear search
           setSearchQuery("");
           const input = document.querySelector(".search-bar__input") as HTMLInputElement;
           if (input) input.value = "";
+          // Clear all filters
+          setFilters("contentType", "");
+          setFilters("genre", "");
+          setFilters("developer", "");
+          setFilters("publisher", "");
+          setFilters("year", null);
+          setFilters("series", "");
+          setFilters("platform", "");
+          setFilters("favoritesOnly", false);
+          setFilters("offset", 0);
+          setSelectedIndex(0);
         }
       },
     });
