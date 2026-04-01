@@ -31,7 +31,7 @@ export const SearchBar: Component = () => {
   (window as any).__focusSearch = () => inputRef?.focus();
 
   return (
-    <div class="search-bar">
+    <div class="search-bar" onClick={() => inputRef?.focus()}>
       <div class="search-bar__label">Search:</div>
       <input
         ref={inputRef}
@@ -49,9 +49,7 @@ export const SearchBar: Component = () => {
         autocomplete="off"
       />
       <Show when={hasText()}>
-        <div class="search-bar__clear" onClick={clearSearch} title="Clear search">
-          X
-        </div>
+        <span class="search-bar__clear" onClick={(e) => { e.stopPropagation(); clearSearch(); }} title="Clear search">x</span>
       </Show>
     </div>
   );
