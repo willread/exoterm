@@ -26,6 +26,7 @@ import {
   detailWidth,
   setDetailWidth,
   fontSize,
+  setFontSize,
   filters,
   setFilters,
   getPersistedState,
@@ -248,6 +249,31 @@ const App: Component = () => {
       alt: true,
       context: "global",
       handler: () => setActiveMenu(activeMenu() === "help" ? null : "help"),
+    });
+
+    // ── Zoom: + / - ──
+    const applyZoom = (size: number) => {
+      setFontSize(size);
+      document.documentElement.style.setProperty("--font-size", size + "px");
+      document.documentElement.style.setProperty("--char-h", size + "px");
+    };
+
+    registerKey({
+      key: "+",
+      context: "global",
+      handler: () => applyZoom(Math.min(fontSize() + 2, 32)),
+    });
+
+    registerKey({
+      key: "=",
+      context: "global",
+      handler: () => applyZoom(Math.min(fontSize() + 2, 32)),
+    });
+
+    registerKey({
+      key: "-",
+      context: "global",
+      handler: () => applyZoom(Math.max(fontSize() - 2, 8)),
     });
   });
 
