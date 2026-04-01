@@ -16,10 +16,15 @@ export const SearchBar: Component = () => {
     }, 150);
   };
 
-  const clearSearch = () => {
+  const clearSearch = (refocus = true) => {
+    // Cancel any pending debounce so stale query doesn't reapply
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+      debounceTimer = undefined;
+    }
     if (inputRef) {
       inputRef.value = "";
-      inputRef.focus();
+      if (refocus) inputRef.focus();
     }
     setHasText(false);
     setSearchQuery("");
@@ -27,8 +32,9 @@ export const SearchBar: Component = () => {
     setSelectedIndex(0);
   };
 
-  // Expose focus method globally for keyboard shortcut
+  // Expose focus and clear methods globally for keyboard shortcuts
   (window as any).__focusSearch = () => inputRef?.focus();
+  (window as any).__clearSearch = () => clearSearch(false);
 
   return (
     <div class="search-bar" onClick={() => inputRef?.focus()}>

@@ -55,6 +55,10 @@ export async function toggleFavorite(id: number): Promise<boolean> {
   return invoke("toggle_favorite", { id });
 }
 
+export async function clearAllFavorites(): Promise<number> {
+  return invoke("clear_all_favorites");
+}
+
 export async function scanCollection(
   name: string,
   path: string

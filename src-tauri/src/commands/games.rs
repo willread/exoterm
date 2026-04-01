@@ -181,3 +181,12 @@ pub fn toggle_favorite(state: State<AppState>, id: i64) -> Result<bool, String> 
 
     Ok(fav)
 }
+
+#[tauri::command]
+pub fn clear_all_favorites(state: State<AppState>) -> Result<u64, String> {
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let count = db
+        .execute("UPDATE games SET favorite = 0 WHERE favorite = 1", [])
+        .map_err(|e| e.to_string())?;
+    Ok(count as u64)
+}

@@ -17,7 +17,7 @@ import {
   gameList,
   selectedIndex,
   setSelectedIndex,
-  setSearchQuery,
+
   fetchGames,
   sidebarWidth,
   setSidebarWidth,
@@ -78,10 +78,8 @@ const App: Component = () => {
         } else if (activeMenu()) {
           setActiveMenu(null);
         } else {
-          // Clear search
-          setSearchQuery("");
-          const input = document.querySelector(".search-bar__input") as HTMLInputElement;
-          if (input) input.value = "";
+          // Clear search (uses SearchBar's own clear to cancel debounce)
+          (window as any).__clearSearch?.();
           // Clear all filters
           setFilters("contentType", "");
           setFilters("genre", "");

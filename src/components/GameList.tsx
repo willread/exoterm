@@ -9,11 +9,10 @@ import {
   totalCount,
   fetchGames,
   searchQuery,
+  fontSize,
 } from "../lib/store";
 import { toggleFavorite } from "../lib/commands";
 
-// Row height must match --char-h CSS variable (16px).
-const ROW_HEIGHT = 16;
 // Extra rows to render above and below the visible viewport.
 const OVERSCAN = 20;
 
@@ -22,9 +21,13 @@ export const GameList: Component = () => {
 
   const [scrollTop, setScrollTop] = createSignal(0);
 
+  // Row height tracks the current font size (--char-h) so virtual scroll
+  // stays correct after zoom in/out.
+  const rowHeight = () => fontSize();
+
   // Derived virtual window — only re-compute when scroll or list length changes.
   const startIdx = createMemo(() =>
-    Math.max(0, Math.floor(scrollTop() / ROW_HEIGHT) - OVERSCAN)
+    Math.max(0, Math.floor(scrollTop() / rowHeight()) - OVERSCAN)
   );
   const endIdx = createMemo(() => {
     // In JSDOM (tests) clientHeight is 0; fall back to window.innerHeight.
@@ -34,7 +37,7 @@ export const GameList: Component = () => {
         : window.innerHeight || 600;
     return Math.min(
       gameList().length,
-      Math.ceil((scrollTop() + containerH) / ROW_HEIGHT) + OVERSCAN
+      Math.ceil((scrollTop() + containerH) / rowHeight()) + OVERSCAN
     );
   });
   const visibleGames = createMemo(() =>
@@ -74,12 +77,12 @@ export const GameList: Component = () => {
   createEffect(() => {
     const idx = selectedIndex();
     if (listRef) {
-      const rowTop = idx * ROW_HEIGHT;
+      const rowTop = idx * rowHeight();
       if (rowTop < listRef.scrollTop) {
         listRef.scrollTop = rowTop;
         setScrollTop(rowTop);
-      } else if (rowTop + ROW_HEIGHT > listRef.scrollTop + listRef.clientHeight) {
-        const newTop = rowTop + ROW_HEIGHT - listRef.clientHeight;
+      } else if (rowTop + rowHeight() > listRef.scrollTop + listRef.clientHeight) {
+        const newTop = rowTop + rowHeight() - listRef.clientHeight;
         listRef.scrollTop = newTop;
         setScrollTop(newTop);
       }
@@ -167,12 +170,12 @@ export const GameList: Component = () => {
           {/* Outer spacer gives the scrollbar the correct total height */}
           <div
             class="game-list__virtual-spacer"
-            style={{ height: `${gameList().length * ROW_HEIGHT}px` }}
+            style={{ height: `${gameList().length * rowHeight()}px` }}
           >
             {/* Inner container is shifted to the visible window position */}
             <div
               class="game-list__virtual-window"
-              style={{ transform: `translateY(${startIdx() * ROW_HEIGHT}px)` }}
+              style={{ transform: `translateY(${startIdx() * rowHeight()}px)` }}
             >
               <For each={visibleGames()}>
                 {(game, relIdx) => {

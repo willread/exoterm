@@ -1,5 +1,6 @@
 import { Component, Show, For, onMount, onCleanup, createSignal } from "solid-js";
-import { activeMenu, setActiveMenu, setActiveDialog, theme, setTheme, crtEnabled, setCrtEnabled, fontSize, setFontSize } from "../lib/store";
+import { activeMenu, setActiveMenu, setActiveDialog, theme, setTheme, crtEnabled, setCrtEnabled, fontSize, setFontSize, fetchGames } from "../lib/store";
+import { clearAllFavorites } from "../lib/commands";
 import type { Theme } from "../lib/types";
 
 const THEMES: { label: string; value: Theme }[] = [
@@ -12,6 +13,7 @@ const THEMES: { label: string; value: Theme }[] = [
 export const MenuBar: Component = () => {
   let menuBarRef: HTMLDivElement | undefined;
   const [themeSubmenuOpen, setThemeSubmenuOpen] = createSignal(false);
+  const [confirmClearFavs, setConfirmClearFavs] = createSignal(false);
 
   const toggleMenu = (menu: string) => {
     setActiveMenu(activeMenu() === menu ? null : menu);
@@ -138,6 +140,21 @@ export const MenuBar: Component = () => {
         </Show>
       </div>
 
+      {/* Tools */}
+      <div
+        class={`menu-bar__item ${activeMenu() === "tools" ? "menu-bar__item--active" : ""}`}
+        onClick={() => toggleMenu("tools")}
+      >
+        <span class="menu-bar__hotkey">T</span>ools
+        <Show when={activeMenu() === "tools"}>
+          <div class="dropdown">
+            <div class="dropdown__item" onClick={() => { setConfirmClearFavs(true); closeMenu(); }}>
+              Clear All Favorites...
+            </div>
+          </div>
+        </Show>
+      </div>
+
       {/* Help */}
       <div
         class={`menu-bar__item ${activeMenu() === "help" ? "menu-bar__item--active" : ""}`}
@@ -162,6 +179,26 @@ export const MenuBar: Component = () => {
         <div class="menu-bar__control" onClick={handleMaximize} title="Maximize">{"\u2610"}</div>
         <div class="menu-bar__control menu-bar__control--close" onClick={handleClose} title="Close">X</div>
       </div>
+
+      {/* Confirm clear favorites dialog */}
+      <Show when={confirmClearFavs()}>
+        <div class="dialog-overlay" onClick={() => setConfirmClearFavs(false)}>
+          <div class="dialog" onClick={(e) => e.stopPropagation()}>
+            <div class="dialog__title">Confirm</div>
+            <div class="dialog__body">
+              Clear all favorites? This cannot be undone.
+            </div>
+            <div class="dialog__footer">
+              <button class="dialog__button" onClick={() => setConfirmClearFavs(false)}>Cancel</button>
+              <button class="dialog__button" onClick={async () => {
+                await clearAllFavorites();
+                setConfirmClearFavs(false);
+                fetchGames();
+              }}>Clear</button>
+            </div>
+          </div>
+        </div>
+      </Show>
     </div>
   );
 };
