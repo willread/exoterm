@@ -98,7 +98,7 @@ export const MenuBar: Component = () => {
               onMouseEnter={() => setThemeSubmenuOpen(true)}
               onMouseLeave={() => setThemeSubmenuOpen(false)}
             >
-              {"Theme \u25B2"}
+              {"Theme"}
               <Show when={themeSubmenuOpen()}>
                 <div class="dropdown dropdown--submenu">
                   <For each={THEMES}>
