@@ -147,8 +147,8 @@
   --border-dialog: #808080;
   --shadow-color: #808080;
 
-  --crt-glow-color: rgba(0, 0, 0, 0);
-  --crt-scanline-color: rgba(0, 0, 0, 0);
+  --crt-glow-color: rgba(200, 220, 255, 0.2);
+  --crt-scanline-color: rgba(0, 0, 0, 0.15);
 }
 
 /* ═══════════════════════════════════════════════════
@@ -186,8 +186,8 @@
   --border-dialog: #000000;
   --shadow-color: #000000;
 
-  --crt-glow-color: rgba(0, 0, 0, 0);
-  --crt-scanline-color: rgba(0, 0, 0, 0);
+  --crt-glow-color: rgba(200, 200, 200, 0.2);
+  --crt-scanline-color: rgba(0, 0, 0, 0.15);
 }
 
 /* ═══════════════════════════════════════════════════
