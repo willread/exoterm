@@ -2,6 +2,8 @@
 
 A DOS-looking frontend for browsing and launching [eXo](https://exodos.the-eye.us/) game collections.
 
+<img width="2244" height="1404" alt="image" src="https://github.com/user-attachments/assets/1c44bc9b-f46d-49c1-be35-f15aa7288dd3" />
+
 Built with Tauri 2, SolidJS, and way too much nostalgia.
 
 ## What it does
