@@ -94,7 +94,7 @@ export const MenuBar: Component = () => {
                 setTimeout(() => setScanning(false), 3000);
               }
             }}>
-              Re-scan Libraries
+              Re-scan Collections
             </div>
             <div class="dropdown__separator" />
             <div class="dropdown__item" onClick={() => { handleClose(); closeMenu(); }}>
