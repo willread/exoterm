@@ -75,4 +75,4 @@ export interface ChoicePayload {
 export type ContentType = "Game" | "Magazine" | "Book" | "Soundtrack" | "Video" | "Catalog";
 export type SortField = "title" | "year" | "developer" | "publisher" | "genre" | "platform";
 export type SortDir = "asc" | "desc";
-export type Theme = "blue" | "bw" | "amber" | "green";
+export type Theme = "blue" | "bw" | "amber" | "green" | "win95" | "win3x";

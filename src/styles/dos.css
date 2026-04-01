@@ -149,7 +149,8 @@ body {
   height: var(--char-h);
   line-height: var(--char-h);
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
+  align-items: center;
 }
 
 .dropdown__item:hover,
@@ -163,8 +164,15 @@ body {
   margin: 1px 1ch;
 }
 
+.dropdown__check {
+  display: inline-block;
+  width: 2ch;
+  flex-shrink: 0;
+}
+
 .dropdown__shortcut {
-  margin-left: 3ch;
+  margin-left: auto;
+  padding-left: 3ch;
   opacity: 0.7;
 }
 

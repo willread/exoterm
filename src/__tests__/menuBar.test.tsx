@@ -212,6 +212,88 @@ describe("MenuBar Options menu", () => {
   });
 });
 
+// ── Theme submenu ──────────────────────────────────────────────────────────────
+
+describe("MenuBar Theme submenu", () => {
+  function openThemeSubmenu() {
+    const optItem = Array.from(document.querySelectorAll(".menu-bar__item")).find((i) =>
+      i.textContent?.includes("ptions")
+    ) as HTMLElement;
+    optItem.click();
+    // Hover the Theme item to open the submenu
+    const themeItem = Array.from(document.querySelectorAll(".dropdown__item")).find((i) =>
+      i.textContent?.trim() === "Theme"
+    ) as HTMLElement;
+    themeItem.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
+    return themeItem;
+  }
+
+  it("lists all 6 themes in the submenu", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    openThemeSubmenu();
+    const submenu = document.querySelector(".dropdown--submenu");
+    expect(submenu).not.toBeNull();
+    const items = submenu!.querySelectorAll(".dropdown__item");
+    const labels = Array.from(items).map((i) => i.textContent?.replace(/^\s*✓?\s*/, "").trim());
+    expect(labels).toContain("Big Blue");
+    expect(labels).toContain("Black & White");
+    expect(labels).toContain("Amber Phosphor");
+    expect(labels).toContain("Green Phosphor");
+    expect(labels).toContain("Windows 95");
+    expect(labels).toContain("Windows 3.x");
+  });
+
+  it("checkmark appears on the active theme and not others", () => {
+    setTheme("blue");
+    dispose = render(() => <MenuBar />, document.body);
+    openThemeSubmenu();
+    const submenu = document.querySelector(".dropdown--submenu")!;
+    const items = Array.from(submenu.querySelectorAll(".dropdown__item"));
+    const checks = items.map((i) => i.querySelector(".dropdown__check")?.textContent);
+    const labels = items.map((i) =>
+      i.textContent?.replace(/^\s*[✓ ]\s*/, "").trim()
+    );
+    const blueIdx = labels.findIndex((l) => l === "Big Blue");
+    expect(checks[blueIdx]).toBe("✓");
+    // All others should not have the checkmark
+    checks.forEach((c, i) => {
+      if (i !== blueIdx) expect(c).not.toBe("✓");
+    });
+  });
+
+  it("clicking Windows 95 sets theme to win95", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    openThemeSubmenu();
+    const submenu = document.querySelector(".dropdown--submenu")!;
+    const win95Item = Array.from(submenu.querySelectorAll(".dropdown__item")).find((i) =>
+      i.textContent?.includes("Windows 95")
+    ) as HTMLElement;
+    win95Item.click();
+    expect(theme()).toBe("win95");
+  });
+
+  it("clicking Windows 3.x sets theme to win3x", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    openThemeSubmenu();
+    const submenu = document.querySelector(".dropdown--submenu")!;
+    const win3xItem = Array.from(submenu.querySelectorAll(".dropdown__item")).find((i) =>
+      i.textContent?.includes("Windows 3.x")
+    ) as HTMLElement;
+    win3xItem.click();
+    expect(theme()).toBe("win3x");
+  });
+
+  it("theme items each have a dropdown__check span for alignment", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    openThemeSubmenu();
+    const submenu = document.querySelector(".dropdown--submenu")!;
+    const items = submenu.querySelectorAll(".dropdown__item");
+    items.forEach((item) => {
+      expect(item.querySelector(".dropdown__check")).not.toBeNull();
+    });
+  });
+});
+
 // ── Help menu items ────────────────────────────────────────────────────────────
 
 describe("MenuBar Help menu", () => {

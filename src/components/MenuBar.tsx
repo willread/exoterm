@@ -4,10 +4,12 @@ import { clearAllFavorites, rescanAllCollections } from "../lib/commands";
 import type { Theme } from "../lib/types";
 
 const THEMES: { label: string; value: Theme }[] = [
-  { label: "Big Blue", value: "blue" },
-  { label: "Black & White", value: "bw" },
+  { label: "Big Blue",       value: "blue"  },
+  { label: "Black & White",  value: "bw"    },
   { label: "Amber Phosphor", value: "amber" },
   { label: "Green Phosphor", value: "green" },
+  { label: "Windows 95",     value: "win95" },
+  { label: "Windows 3.x",    value: "win3x" },
 ];
 
 export const MenuBar: Component = () => {
@@ -126,7 +128,8 @@ export const MenuBar: Component = () => {
                         class={`dropdown__item ${theme() === t.value ? "dropdown__item--active" : ""}`}
                         onClick={() => selectTheme(t.value)}
                       >
-                        <span style={`display: inline-block; width: 2ch; ${theme() === t.value ? "" : "visibility: hidden"}`}>{"\u2713"}</span>{t.label}
+                        <span class="dropdown__check">{theme() === t.value ? "\u2713" : " "}</span>
+                        {t.label}
                       </div>
                     )}
                   </For>
