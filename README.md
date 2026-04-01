@@ -1,6 +1,6 @@
 # exoterm
 
-A DOS-looking frontend for browsing and launching [eXo](https://exodos.the-eye.us/) game collections.
+A DOS-looking frontend for browsing and launching [eXo](https://www.retro-exo.com/) game collections.
 
 <img width="2244" height="1404" alt="image" src="https://github.com/user-attachments/assets/1c44bc9b-f46d-49c1-be35-f15aa7288dd3" />
 
