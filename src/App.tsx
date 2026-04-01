@@ -54,6 +54,17 @@ const App: Component = () => {
     document.documentElement.style.setProperty("--font-size", fontSize() + "px");
     document.documentElement.style.setProperty("--char-h", fontSize() + "px");
 
+    // Wait for fonts to load before revealing the UI to prevent FOUC
+    try {
+      await document.fonts.ready;
+    } catch (_) {
+      // fonts.ready not supported — proceed immediately
+    }
+
+    // Reveal the app
+    const root = document.getElementById("root");
+    if (root) root.style.visibility = "visible";
+
     // Initialize keyboard handler
     initKeyboardHandler();
 
