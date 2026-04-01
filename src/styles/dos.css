@@ -19,6 +19,8 @@ body {
   line-height: var(--char-h);
   background: var(--bg-primary);
   color: var(--fg-primary);
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Panels are focusable for Tab navigation */
@@ -474,6 +476,8 @@ body {
   font-family: var(--font-dos);
   font-size: var(--font-size);
   caret-color: var(--fg-primary);
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .search-bar__clear {
