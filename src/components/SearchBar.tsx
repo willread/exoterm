@@ -1,5 +1,5 @@
 import { Component, Show, createSignal } from "solid-js";
-import { setSearchQuery, setFilters, setSelectedIndex } from "../lib/store";
+import { setSearchQuery, setFilters, setSelectedIndex, setSearchFocused } from "../lib/store";
 
 export const SearchBar: Component = () => {
   let inputRef: HTMLInputElement | undefined;
@@ -36,6 +36,8 @@ export const SearchBar: Component = () => {
         ref={inputRef}
         class="search-bar__input"
         type="text"
+        onFocus={() => setSearchFocused(true)}
+        onBlur={() => setSearchFocused(false)}
         onInput={(e) => handleInput(e.currentTarget.value)}
         onKeyDown={(e) => {
           if (e.key === "Escape") {

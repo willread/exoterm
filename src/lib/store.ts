@@ -7,6 +7,7 @@ import type { SortDir, SortField, Theme, GameSummary, FilterOptions } from "./ty
 export const [theme, setTheme] = createSignal<Theme>("blue");
 export const [crtEnabled, setCrtEnabled] = createSignal(false);
 export const [activePanel, setActivePanel] = createSignal<"sidebar" | "list" | "detail">("list");
+export const [searchFocused, setSearchFocused] = createSignal(false);
 export const [fontSize, setFontSize] = createSignal(16); // px, default 16
 
 // ── Layout state (persisted) ──────────────────
