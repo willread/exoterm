@@ -54,6 +54,8 @@ export async function getGameImages(id: number): Promise<GameImage[]> {
 export interface GameVideo {
   name: string;
   path: string;
+  /** "bat" = extracted from launch script; "dir" = found in Videos/Extras directory */
+  source: "bat" | "dir";
 }
 
 export async function getGameVideos(id: number): Promise<GameVideo[]> {

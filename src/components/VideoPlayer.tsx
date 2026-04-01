@@ -3,6 +3,8 @@ import { Component, createSignal, onCleanup, onMount, Show } from "solid-js";
 export interface VideoPlayerProps {
   src: string;
   name: string;
+  /** "bat" = extracted from launch script; "dir" = found in Videos/Extras directory */
+  source?: "bat" | "dir";
   /** Called when user navigates to previous video (undefined = no prev) */
   onPrev?: () => void;
   /** Called when user navigates to next video (undefined = no next) */
@@ -97,6 +99,9 @@ export const VideoPlayer: Component<VideoPlayerProps> = (props) => {
         <span class="video-player__title" title={props.name}>
           {props.name}
         </span>
+        <Show when={props.source === "bat"}>
+          <span class="video-player__source-badge" title="Detected in launch script">BAT</span>
+        </Show>
         <Show when={props.navLabel}>
           <span class="video-player__nav-label">{props.navLabel}</span>
         </Show>

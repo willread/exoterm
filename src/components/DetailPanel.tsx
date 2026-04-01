@@ -64,6 +64,7 @@ export const DetailPanel: Component = () => {
       if (!id) return [];
       const raw = await getGameVideos(id);
       return raw.map((v) => ({ ...v, src: convertFileSrc(v.path) }));
+      // v.source ("bat" | "dir") passes through via spread
     }
   );
 
@@ -105,6 +106,7 @@ export const DetailPanel: Component = () => {
                 <VideoPlayer
                   src={vid().src}
                   name={vid().name}
+                  source={vid().source}
                   onPrev={
                     videoIndex() > 0
                       ? () => setVideoIndex((i) => i - 1)

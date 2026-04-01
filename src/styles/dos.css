@@ -781,6 +781,17 @@ body {
   white-space: nowrap;
 }
 
+.video-player__source-badge {
+  font-size: 0.65em;
+  padding: 0 0.4ch;
+  background: var(--bg-highlight);
+  color: var(--fg-highlight);
+  flex-shrink: 0;
+  line-height: calc(var(--char-h) - 4px);
+  margin-top: 2px;
+  letter-spacing: 0.5px;
+}
+
 .video-player__nav-btn {
   background: none;
   border: none;

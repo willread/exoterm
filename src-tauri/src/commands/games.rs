@@ -166,18 +166,103 @@ pub fn get_game_images(state: State<AppState>, id: i64) -> Result<Vec<GameImage>
 
 const VIDEO_EXTENSIONS: &[&str] = &["mp4", "avi", "mkv", "mov", "wmv", "webm", "m4v", "ogv", "flv"];
 
+/// Split a batch file line into tokens, respecting double-quoted strings.
+fn bat_line_tokens(line: &str) -> Vec<String> {
+    let mut tokens = Vec::new();
+    let mut current = String::new();
+    let mut in_quotes = false;
+    for ch in line.chars() {
+        match ch {
+            '"' => in_quotes = !in_quotes,
+            ' ' | '\t' if !in_quotes => {
+                if !current.is_empty() {
+                    tokens.push(current.clone());
+                    current.clear();
+                }
+            }
+            _ => current.push(ch),
+        }
+    }
+    if !current.is_empty() {
+        tokens.push(current);
+    }
+    tokens
+}
+
+fn has_video_extension(s: &str) -> bool {
+    let lower = s.to_lowercase();
+    VIDEO_EXTENSIONS.iter().any(|ext| lower.ends_with(&format!(".{}", ext)))
+}
+
+/// Parse a batch file and return absolute paths to any video files it references.
+/// `bat_path` is the full path to the .bat file; `work_dir` is the working directory
+/// the batch runs from; `collection_root` is a fallback search root.
+fn extract_bat_video_paths(
+    bat_path: &PathBuf,
+    work_dir: &PathBuf,
+    collection_root: &PathBuf,
+) -> Vec<PathBuf> {
+    let content = match std::fs::read_to_string(bat_path) {
+        Ok(c) => c,
+        Err(_) => return vec![],
+    };
+
+    let bat_dir = bat_path.parent().unwrap_or(work_dir.as_path());
+    let mut found: Vec<PathBuf> = Vec::new();
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        // Skip comments and echo lines
+        let lower = trimmed.to_lowercase();
+        if lower.starts_with("rem ") || lower.starts_with("::") || lower.starts_with("echo ") {
+            continue;
+        }
+
+        for token in bat_line_tokens(trimmed) {
+            if !has_video_extension(&token) {
+                continue;
+            }
+            // Try the token as-is (absolute), then relative to bat dir, work dir, collection root
+            let candidates = [
+                PathBuf::from(&token),
+                bat_dir.join(&token),
+                work_dir.join(&token),
+                collection_root.join(&token),
+            ];
+            for candidate in &candidates {
+                if candidate.is_absolute() || candidate.components().count() > 1 {
+                    if let Ok(canonical) = candidate.canonicalize() {
+                        if !found.contains(&canonical) {
+                            found.push(canonical);
+                            break;
+                        }
+                    } else if candidate.exists() {
+                        let p = candidate.clone();
+                        if !found.contains(&p) {
+                            found.push(p);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    found
+}
+
 #[tauri::command]
 pub fn get_game_videos(state: State<AppState>, id: i64) -> Result<Vec<GameVideo>, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
 
-    let (app_path, collection_path): (String, String) = db
+    let (app_path, root_folder, collection_path): (String, Option<String>, String) = db
         .query_row(
-            "SELECT g.application_path, c.path
+            "SELECT g.application_path, g.root_folder, c.path
              FROM games g
              JOIN collections c ON g.collection_id = c.id
              WHERE g.id = ?",
             [id],
-            |row| Ok((row.get(0)?, row.get(1)?)),
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )
         .map_err(|e| e.to_string())?;
     drop(db);
@@ -195,30 +280,66 @@ pub fn get_game_videos(state: State<AppState>, id: i64) -> Result<Vec<GameVideo>
     };
 
     let collection_root = PathBuf::from(&collection_path);
-    let mut results = Vec::new();
+    let bat_path = collection_root.join(&app_path);
+    let work_dir = if let Some(ref rf) = root_folder {
+        collection_root.join(rf)
+    } else {
+        bat_path.parent().map(|p| p.to_path_buf()).unwrap_or_else(|| collection_root.clone())
+    };
 
-    // Search in Videos/{game_folder}/ then Extras/{game_folder}/ (LaunchBox standard locations)
+    // Collect seen paths to deduplicate across sources
+    let mut seen_paths: Vec<PathBuf> = Vec::new();
+    let mut results: Vec<GameVideo> = Vec::new();
+
+    // 1. Parse the .bat file for video references — these are the "intended" videos
+    //    (e.g. a Video content-type entry whose bat just calls `start intro.mp4`)
+    if bat_path.exists() {
+        for abs_path in extract_bat_video_paths(&bat_path, &work_dir, &collection_root) {
+            if seen_paths.contains(&abs_path) {
+                continue;
+            }
+            let name = abs_path
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_default();
+            seen_paths.push(abs_path.clone());
+            results.push(GameVideo {
+                name,
+                path: abs_path.to_string_lossy().to_string(),
+                source: "bat".to_string(),
+            });
+        }
+    }
+
+    // 2. Scan Videos/{game_folder}/ then Extras/{game_folder}/ (LaunchBox standard locations)
     for subdir in &["Videos", "Extras"] {
         let dir = collection_root.join(subdir).join(&game_folder);
-        if dir.is_dir() {
-            let mut entries: Vec<_> = std::fs::read_dir(&dir)
-                .map(|rd| rd.flatten().collect())
-                .unwrap_or_default();
-            entries.sort_by_key(|e| e.file_name());
-            for entry in entries {
-                let path = entry.path();
-                if let Some(ext) = path.extension() {
-                    let ext_lower = ext.to_string_lossy().to_lowercase();
-                    if VIDEO_EXTENSIONS.contains(&ext_lower.as_str()) {
-                        let name = path
-                            .file_name()
-                            .map(|n| n.to_string_lossy().to_string())
-                            .unwrap_or_default();
-                        results.push(GameVideo {
-                            name,
-                            path: path.to_string_lossy().to_string(),
-                        });
+        if !dir.is_dir() {
+            continue;
+        }
+        let mut entries: Vec<_> = std::fs::read_dir(&dir)
+            .map(|rd| rd.flatten().collect())
+            .unwrap_or_default();
+        entries.sort_by_key(|e| e.file_name());
+        for entry in entries {
+            let path = entry.path();
+            if let Some(ext) = path.extension() {
+                let ext_lower = ext.to_string_lossy().to_lowercase();
+                if VIDEO_EXTENSIONS.contains(&ext_lower.as_str()) {
+                    let canonical = path.canonicalize().unwrap_or_else(|_| path.clone());
+                    if seen_paths.contains(&canonical) {
+                        continue;
                     }
+                    let name = path
+                        .file_name()
+                        .map(|n| n.to_string_lossy().to_string())
+                        .unwrap_or_default();
+                    seen_paths.push(canonical);
+                    results.push(GameVideo {
+                        name,
+                        path: path.to_string_lossy().to_string(),
+                        source: "dir".to_string(),
+                    });
                 }
             }
         }

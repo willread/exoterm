@@ -32,14 +32,15 @@ describe("getGameVideos", () => {
 
   it("returns the video list from invoke", async () => {
     const mockVideos = [
-      { name: "Doom-gameplay.mp4", path: "C:\\eXoDOS\\Videos\\Doom\\Doom-gameplay.mp4" },
-      { name: "Doom-intro.mp4",    path: "C:\\eXoDOS\\Videos\\Doom\\Doom-intro.mp4" },
+      { name: "Doom-intro.mp4",    path: "C:\\eXoDOS\\Videos\\Doom\\Doom-intro.mp4",    source: "bat" },
+      { name: "Doom-gameplay.mp4", path: "C:\\eXoDOS\\Videos\\Doom\\Doom-gameplay.mp4", source: "dir" },
     ];
     mockInvoke.mockResolvedValueOnce(mockVideos);
     const result = await getGameVideos(1);
     expect(result).toHaveLength(2);
-    expect(result[0].name).toBe("Doom-gameplay.mp4");
-    expect(result[1].path).toContain("Doom-intro.mp4");
+    expect(result[0].name).toBe("Doom-intro.mp4");
+    expect(result[0].source).toBe("bat");
+    expect(result[1].source).toBe("dir");
   });
 
   it("returns empty array when no videos found", async () => {
@@ -113,6 +114,32 @@ describe("VideoPlayer rendering", () => {
       document.body
     );
     expect(document.querySelectorAll(".video-player__nav-btn")).toHaveLength(0);
+  });
+
+  it("shows BAT badge for bat-sourced videos", () => {
+    dispose = render(
+      () => <VideoPlayer src="asset://localhost/intro.mp4" name="intro.mp4" source="bat" />,
+      document.body
+    );
+    const badge = document.querySelector(".video-player__source-badge");
+    expect(badge).not.toBeNull();
+    expect(badge?.textContent).toBe("BAT");
+  });
+
+  it("does not show BAT badge for dir-sourced videos", () => {
+    dispose = render(
+      () => <VideoPlayer src="asset://localhost/gameplay.mp4" name="gameplay.mp4" source="dir" />,
+      document.body
+    );
+    expect(document.querySelector(".video-player__source-badge")).toBeNull();
+  });
+
+  it("does not show BAT badge when source is omitted", () => {
+    dispose = render(
+      () => <VideoPlayer src="asset://localhost/test.mp4" name="test.mp4" />,
+      document.body
+    );
+    expect(document.querySelector(".video-player__source-badge")).toBeNull();
   });
 
   it("renders prev/next nav buttons when callbacks provided", () => {

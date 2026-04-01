@@ -97,6 +97,8 @@ pub struct GameImage {
 pub struct GameVideo {
     pub name: String,
     pub path: String,
+    /// "bat" = extracted from the game's launch script; "dir" = found in Videos/Extras directory
+    pub source: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
