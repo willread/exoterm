@@ -22,7 +22,33 @@ fn content_type_from_filename(filename: &str) -> &str {
     }
 }
 
-/// Scans a single platform XML file and inserts games into the database.
+/// Classify a file path into a kind string based on its extension.
+fn extra_kind(path: &str) -> &'static str {
+    let lower = path.to_lowercase();
+    if lower.ends_with(".pdf") {
+        "pdf"
+    } else if lower.ends_with(".png") || lower.ends_with(".jpg") || lower.ends_with(".jpeg")
+        || lower.ends_with(".gif") || lower.ends_with(".bmp") || lower.ends_with(".webp")
+    {
+        "image"
+    } else if lower.ends_with(".mp4") || lower.ends_with(".avi") || lower.ends_with(".mkv")
+        || lower.ends_with(".mov") || lower.ends_with(".wmv") || lower.ends_with(".webm")
+    {
+        "video"
+    } else if lower.ends_with(".mp3") || lower.ends_with(".wav") || lower.ends_with(".ogg")
+        || lower.ends_with(".flac") || lower.ends_with(".m4a")
+    {
+        "audio"
+    } else if lower.ends_with(".txt") || lower.ends_with(".nfo") || lower.ends_with(".doc")
+        || lower.ends_with(".rtf") || lower.ends_with(".htm") || lower.ends_with(".html")
+    {
+        "text"
+    } else {
+        "other"
+    }
+}
+
+/// Scans a single platform XML file and inserts games (and their extras) into the database.
 /// Returns the number of games inserted.
 pub fn parse_platform_xml(
     conn: &Connection,
@@ -41,8 +67,12 @@ pub fn parse_platform_xml(
 
     let mut buf = Vec::with_capacity(8192);
     let mut in_game = false;
+    let mut in_addon = false;
     let mut current_field: Option<String> = None;
     let mut fields: HashMap<String, String> = HashMap::new();
+    let mut addon_fields: HashMap<String, String> = HashMap::new();
+    // Collect (lb_game_id, name, path, region) for later bulk insert
+    let mut addon_buffer: Vec<(String, String, String, Option<String>)> = Vec::new();
     let mut count: usize = 0;
     let mut batch_count: usize = 0;
 
@@ -56,7 +86,10 @@ pub fn parse_platform_xml(
                 if tag == "Game" {
                     in_game = true;
                     fields.clear();
-                } else if in_game {
+                } else if tag == "AdditionalApplication" {
+                    in_addon = true;
+                    addon_fields.clear();
+                } else if in_game || in_addon {
                     current_field = Some(tag);
                 }
             }
@@ -145,15 +178,38 @@ pub fn parse_platform_xml(
                         batch_count = 0;
                         on_progress(count);
                     }
-                } else if in_game {
+                } else if tag == "AdditionalApplication" && in_addon {
+                    in_addon = false;
+                    current_field = None;
+                    // Buffer the extra — we'll insert after all games are committed
+                    // so lb_id lookups are guaranteed to work.
+                    if let (Some(game_lb_id), Some(name), Some(path)) = (
+                        addon_fields.get("GameId"),
+                        addon_fields.get("Name"),
+                        addon_fields.get("ApplicationPath"),
+                    ) {
+                        if !game_lb_id.is_empty() && !name.is_empty() && !path.is_empty() {
+                            addon_buffer.push((
+                                game_lb_id.clone(),
+                                name.clone(),
+                                path.clone(),
+                                addon_fields.get("Region").filter(|r| !r.is_empty()).cloned(),
+                            ));
+                        }
+                    }
+                } else if in_game || in_addon {
                     current_field = None;
                 }
             }
             Ok(Event::Text(ref e)) => {
-                if in_game {
+                if in_game || in_addon {
                     if let Some(ref field) = current_field {
                         let text = e.unescape().unwrap_or_default().to_string();
-                        fields.insert(field.clone(), text);
+                        if in_game {
+                            fields.insert(field.clone(), text);
+                        } else {
+                            addon_fields.insert(field.clone(), text);
+                        }
                     }
                 }
             }
@@ -174,9 +230,29 @@ pub fn parse_platform_xml(
         buf.clear();
     }
 
-    // Commit remaining batch
+    // Commit remaining game batch
     conn.execute("COMMIT", []).map_err(|e| e.to_string())?;
     on_progress(count);
+
+    // Bulk-insert extras now that all games (and their lb_ids) are committed
+    if !addon_buffer.is_empty() {
+        conn.execute("BEGIN", []).map_err(|e| e.to_string())?;
+        for (lb_game_id, name, path, region) in &addon_buffer {
+            if let Ok(game_id) = conn.query_row(
+                "SELECT id FROM games WHERE lb_id = ? AND collection_id = ?",
+                rusqlite::params![lb_game_id, collection_id],
+                |r| r.get::<_, i64>(0),
+            ) {
+                let kind = extra_kind(path);
+                let _ = conn.execute(
+                    "INSERT INTO game_extras (game_id, name, path, region, kind)
+                     VALUES (?1, ?2, ?3, ?4, ?5)",
+                    rusqlite::params![game_id, name, path, region, kind],
+                );
+            }
+        }
+        conn.execute("COMMIT", []).map_err(|e| e.to_string())?;
+    }
 
     Ok(count)
 }
@@ -270,6 +346,14 @@ mod tests {
                  lb_id TEXT,
                  lb_database_id TEXT,
                  title_normalized TEXT
+             );
+             CREATE TABLE game_extras (
+                 id      INTEGER PRIMARY KEY AUTOINCREMENT,
+                 game_id INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+                 name    TEXT NOT NULL,
+                 path    TEXT NOT NULL,
+                 region  TEXT,
+                 kind    TEXT NOT NULL DEFAULT 'other'
              );",
         )
         .unwrap();
@@ -440,6 +524,140 @@ mod tests {
             .query_row("SELECT favorite FROM games WHERE title = 'Test Game'", [], |r| r.get(0))
             .unwrap();
         assert_eq!(fav, 0, "Favorite should default to false");
+
+        std::fs::remove_file(&tmp).ok();
+    }
+
+    #[test]
+    fn test_extra_kind_classification() {
+        assert_eq!(extra_kind("Manual.pdf"), "pdf");
+        assert_eq!(extra_kind("MAP.PDF"), "pdf");
+        assert_eq!(extra_kind("screenshot.png"), "image");
+        assert_eq!(extra_kind("cover.jpg"), "image");
+        assert_eq!(extra_kind("COVER.JPEG"), "image");
+        assert_eq!(extra_kind("intro.mp4"), "video");
+        assert_eq!(extra_kind("gameplay.avi"), "video");
+        assert_eq!(extra_kind("soundtrack.mp3"), "audio");
+        assert_eq!(extra_kind("music.ogg"), "audio");
+        assert_eq!(extra_kind("readme.txt"), "text");
+        assert_eq!(extra_kind("info.nfo"), "text");
+        assert_eq!(extra_kind("unknown.xyz"), "other");
+    }
+
+    #[test]
+    fn test_parse_additional_applications() {
+        let conn = make_db();
+        conn.execute(
+            "INSERT INTO collections (name, path) VALUES ('Test', '/test_extras')",
+            [],
+        )
+        .unwrap();
+        let collection_id: i64 = conn
+            .query_row("SELECT id FROM collections WHERE name = 'Test'", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+
+        let xml = r#"<?xml version="1.0" standalone="yes"?>
+<LaunchBox>
+  <Game>
+    <ID>doom2-guid-123</ID>
+    <Title>DOOM II: Hell on Earth</Title>
+    <Platform>MS-DOS</Platform>
+    <ApplicationPath>eXo\eXoDOS\!dos\DOOM II\DOOM II (1994).bat</ApplicationPath>
+  </Game>
+  <AdditionalApplication>
+    <GameId>doom2-guid-123</GameId>
+    <Name>DOOM II Manual</Name>
+    <ApplicationPath>Extras\DOOM II\DOOM II Manual.pdf</ApplicationPath>
+    <Region>English</Region>
+  </AdditionalApplication>
+  <AdditionalApplication>
+    <GameId>doom2-guid-123</GameId>
+    <Name>Cheats PC Gamer 1995-02 page 149</Name>
+    <ApplicationPath>Extras\DOOM II\Cheats PC Gamer 1995-02 page 149.pdf</ApplicationPath>
+    <Region>English</Region>
+  </AdditionalApplication>
+  <AdditionalApplication>
+    <GameId>doom2-guid-123</GameId>
+    <Name>Level Map</Name>
+    <ApplicationPath>Extras\DOOM II\Level Map.png</ApplicationPath>
+  </AdditionalApplication>
+</LaunchBox>"#;
+
+        let tmp = std::env::temp_dir().join("test_extras.xml");
+        std::fs::write(&tmp, xml).unwrap();
+
+        let count = parse_platform_xml(&conn, collection_id, &tmp, &mut |_| {}).unwrap();
+        assert_eq!(count, 1, "One game should be inserted");
+
+        let game_id: i64 = conn
+            .query_row("SELECT id FROM games WHERE title = 'DOOM II: Hell on Earth'", [], |r| r.get(0))
+            .unwrap();
+
+        let extras: Vec<(String, String, Option<String>, String)> = {
+            let mut stmt = conn
+                .prepare("SELECT name, path, region, kind FROM game_extras WHERE game_id = ? ORDER BY name")
+                .unwrap();
+            stmt.query_map([game_id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))
+                .unwrap()
+                .collect::<rusqlite::Result<Vec<_>>>()
+                .unwrap()
+        };
+
+        assert_eq!(extras.len(), 3, "All three extras should be inserted");
+
+        // Sorted by name: Cheats, DOOM II Manual, Level Map
+        assert_eq!(extras[0].0, "Cheats PC Gamer 1995-02 page 149");
+        assert_eq!(extras[0].3, "pdf");
+        assert_eq!(extras[0].2.as_deref(), Some("English"));
+
+        assert_eq!(extras[1].0, "DOOM II Manual");
+        assert_eq!(extras[1].3, "pdf");
+
+        assert_eq!(extras[2].0, "Level Map");
+        assert_eq!(extras[2].3, "image");
+        assert!(extras[2].2.is_none(), "No region for Level Map");
+
+        std::fs::remove_file(&tmp).ok();
+    }
+
+    #[test]
+    fn test_extras_ignored_for_unknown_game_lb_id() {
+        let conn = make_db();
+        conn.execute(
+            "INSERT INTO collections (name, path) VALUES ('Test', '/test_extras2')",
+            [],
+        )
+        .unwrap();
+        let collection_id: i64 = conn
+            .query_row("SELECT id FROM collections WHERE name = 'Test'", [], |r| r.get(0))
+            .unwrap();
+
+        let xml = r#"<?xml version="1.0" standalone="yes"?>
+<LaunchBox>
+  <Game>
+    <ID>real-game-id</ID>
+    <Title>Real Game</Title>
+    <Platform>MS-DOS</Platform>
+    <ApplicationPath>eXo\eXoDOS\!dos\Real\Real.bat</ApplicationPath>
+  </Game>
+  <AdditionalApplication>
+    <GameId>nonexistent-guid</GameId>
+    <Name>Orphan Extra</Name>
+    <ApplicationPath>Extras\Real\Orphan.pdf</ApplicationPath>
+  </AdditionalApplication>
+</LaunchBox>"#;
+
+        let tmp = std::env::temp_dir().join("test_extras_orphan.xml");
+        std::fs::write(&tmp, xml).unwrap();
+
+        parse_platform_xml(&conn, collection_id, &tmp, &mut |_| {}).unwrap();
+
+        let extra_count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM game_extras", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(extra_count, 0, "Orphaned extras (unknown GameId) should be silently dropped");
 
         std::fs::remove_file(&tmp).ok();
     }

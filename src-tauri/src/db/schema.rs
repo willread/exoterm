@@ -51,6 +51,17 @@ pub fn initialize(conn: &Connection) -> rusqlite::Result<()> {
         CREATE INDEX IF NOT EXISTS idx_games_favorite ON games(favorite);
         CREATE INDEX IF NOT EXISTS idx_games_content_type ON games(content_type);
         CREATE INDEX IF NOT EXISTS idx_games_platform ON games(platform);
+
+        CREATE TABLE IF NOT EXISTS game_extras (
+            id      INTEGER PRIMARY KEY AUTOINCREMENT,
+            game_id INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+            name    TEXT NOT NULL,
+            path    TEXT NOT NULL,
+            region  TEXT,
+            kind    TEXT NOT NULL DEFAULT 'other'
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_extras_game ON game_extras(game_id);
         ",
     )?;
 
