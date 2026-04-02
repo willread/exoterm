@@ -162,9 +162,7 @@ export const GameList: Component = () => {
           when={gameList().length > 0}
           fallback={
             <div class="game-list__empty">
-              {totalCount() === 0
-                ? "No games found. Add a collection via File menu."
-                : "No matches."}
+              {"No games found. Adjust your filters or add a new collection from the File menu."}
             </div>
           }
         >
