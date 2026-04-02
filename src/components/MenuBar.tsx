@@ -1,5 +1,5 @@
 import { Component, Show, For, onMount, onCleanup, createSignal } from "solid-js";
-import { activeMenu, setActiveMenu, setActiveDialog, theme, setTheme, crtEnabled, setCrtEnabled, fontSize, setFontSize, fetchGames, setScanning, setScanStatus, refetchCollections } from "../lib/store";
+import { activeMenu, setActiveMenu, setActiveDialog, theme, setTheme, crtEnabled, setCrtEnabled, showBoxArt, setShowBoxArt, fontSize, setFontSize, fetchGames, setScanning, setScanStatus, refetchCollections } from "../lib/store";
 import { clearAllFavorites, rescanAllCollections } from "../lib/commands";
 import type { Theme } from "../lib/types";
 
@@ -138,6 +138,9 @@ export const MenuBar: Component = () => {
             </div>
             <div class="dropdown__item" onClick={() => { setCrtEnabled(!crtEnabled()); closeMenu(); }}>
               CRT Effects: {crtEnabled() ? "ON" : "OFF"}
+            </div>
+            <div class="dropdown__item" onClick={() => { setShowBoxArt(!showBoxArt()); closeMenu(); }}>
+              Box Art: {showBoxArt() ? "ON" : "OFF"}
             </div>
             <div class="dropdown__separator" />
             <div class="dropdown__item" onClick={() => {

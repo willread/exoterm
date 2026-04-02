@@ -6,6 +6,7 @@ import type { SortDir, SortField, Theme, GameSummary, FilterOptions } from "./ty
 // ── App state ──────────────────────────────────
 export const [theme, setTheme] = createSignal<Theme>("blue");
 export const [crtEnabled, setCrtEnabled] = createSignal(false);
+export const [showBoxArt, setShowBoxArt] = createSignal(false);
 export const [activePanel, setActivePanel] = createSignal<"sidebar" | "list" | "detail">("list");
 export const [searchFocused, setSearchFocused] = createSignal(false);
 export const [fontSize, setFontSize] = createSignal(16); // px, default 16
@@ -130,6 +131,7 @@ export function getPersistedState(): Record<string, any> {
   return {
     theme: theme(),
     crtEnabled: crtEnabled(),
+    showBoxArt: showBoxArt(),
     fontSize: fontSize(),
     sidebarWidth: sidebarWidth(),
     detailWidth: detailWidth(),
@@ -151,6 +153,7 @@ export function getPersistedState(): Record<string, any> {
 export function restorePersistedState(saved: Record<string, any>): void {
   if (saved.theme) setTheme(saved.theme);
   if (saved.crtEnabled !== undefined) setCrtEnabled(saved.crtEnabled);
+  if (saved.showBoxArt !== undefined) setShowBoxArt(saved.showBoxArt);
   if (saved.fontSize) setFontSize(saved.fontSize);
   if (saved.sidebarWidth) setSidebarWidth(saved.sidebarWidth);
   if (saved.detailWidth) setDetailWidth(saved.detailWidth);

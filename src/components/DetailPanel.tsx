@@ -1,7 +1,7 @@
 import { Component, For, Show, createResource, createSignal } from "solid-js";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { openPath } from "@tauri-apps/plugin-opener";
-import { selectedGame, gameList, selectedIndex } from "../lib/store";
+import { selectedGame, gameList, selectedIndex, showBoxArt } from "../lib/store";
 import { getGameImages, getGameVideos, getGameExtras, launchGame } from "../lib/commands";
 import { guardedLaunch } from "../lib/keyboard";
 import type { GameExtra, GameImage } from "../lib/commands";
@@ -144,13 +144,13 @@ export const DetailPanel: Component = () => {
               )}
             </Show>
 
-            {/* Box art */}
-            <Show when={boxArt()}>
+            {/* Box art — only shown when enabled via Options > Box Art */}
+            <Show when={showBoxArt() && boxArt()}>
               {(img) => <BoxArt image={img()} quantize={quantize()} />}
             </Show>
 
-            {/* 256-color toggle */}
-            <Show when={images() && images()!.length > 0}>
+            {/* 256-color toggle — only shown when box art is visible */}
+            <Show when={showBoxArt() && images() && images()!.length > 0}>
               <div
                 class="detail-panel__quantize-toggle"
                 onClick={() => setQuantize(!quantize())}
