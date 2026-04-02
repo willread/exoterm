@@ -1,7 +1,7 @@
-import { Component, For, Show, createResource, createSignal } from "solid-js";
+import { Component, For, Show, createEffect, createResource, createSignal } from "solid-js";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { openPath } from "@tauri-apps/plugin-opener";
-import { selectedGame, gameList, selectedIndex, showBoxArt } from "../lib/store";
+import { invoke } from "@tauri-apps/api/core";
+import { selectedGame, gameList, selectedIndex, setFilters, setSelectedIndex } from "../lib/store";
 import { getGameImages, getGameVideos, getGameExtras, launchGame } from "../lib/commands";
 import { guardedLaunch } from "../lib/keyboard";
 import type { GameExtra, GameImage } from "../lib/commands";
@@ -39,19 +39,26 @@ function applyVgaQuantize(img: HTMLImageElement): string {
 }
 
 const BoxArt: Component<{ image: GameImage; quantize: boolean }> = (props) => {
-  const [displaySrc, setDisplaySrc] = createSignal(props.image.data_url);
+  // quantizedSrc holds the VGA-quantized data URL, or null to use the raw prop.
+  // Must reset to null whenever the source image changes (new game selected)
+  // so the stale quantized image isn't shown for the new game.
+  const [quantizedSrc, setQuantizedSrc] = createSignal<string | null>(null);
+
+  createEffect(() => {
+    props.image.data_url; // track reactive dependency
+    setQuantizedSrc(null);
+  });
 
   const handleLoad = (e: Event) => {
     if (!props.quantize) return;
     const img = e.currentTarget as HTMLImageElement;
-    const quantized = applyVgaQuantize(img);
-    setDisplaySrc(quantized);
+    setQuantizedSrc(applyVgaQuantize(img));
   };
 
   return (
     <div class="detail-panel__boxart-wrap">
       <img
-        src={displaySrc()}
+        src={quantizedSrc() ?? props.image.data_url}
         alt={props.image.category}
         class="detail-panel__boxart"
         onLoad={handleLoad}
@@ -144,13 +151,13 @@ export const DetailPanel: Component = () => {
               )}
             </Show>
 
-            {/* Box art — only shown when enabled via Options > Box Art */}
-            <Show when={showBoxArt() && boxArt()}>
+            {/* Box art */}
+            <Show when={boxArt()}>
               {(img) => <BoxArt image={img()} quantize={quantize()} />}
             </Show>
 
-            {/* 256-color toggle — only shown when box art is visible */}
-            <Show when={showBoxArt() && images() && images()!.length > 0}>
+            {/* 256-color toggle */}
+            <Show when={images() && images()!.length > 0}>
               <div
                 class="detail-panel__quantize-toggle"
                 onClick={() => setQuantize(!quantize())}
@@ -172,35 +179,50 @@ export const DetailPanel: Component = () => {
               <Show when={g().release_year}>
                 <div class="detail-panel__field">
                   <span class="detail-panel__label">Year:</span>
-                  <span class="detail-panel__value">{g().release_year}</span>
+                  <span
+                    class="detail-panel__value detail-panel__value--link"
+                    onClick={() => { setFilters("year", g().release_year); setFilters("offset", 0); setSelectedIndex(0); }}
+                  >{g().release_year}</span>
                 </div>
               </Show>
 
               <Show when={g().developer}>
                 <div class="detail-panel__field">
                   <span class="detail-panel__label">Developer:</span>
-                  <span class="detail-panel__value">{g().developer}</span>
+                  <span
+                    class="detail-panel__value detail-panel__value--link"
+                    onClick={() => { setFilters("developer", g().developer!); setFilters("offset", 0); setSelectedIndex(0); }}
+                  >{g().developer}</span>
                 </div>
               </Show>
 
               <Show when={g().publisher}>
                 <div class="detail-panel__field">
                   <span class="detail-panel__label">Publisher:</span>
-                  <span class="detail-panel__value">{g().publisher}</span>
+                  <span
+                    class="detail-panel__value detail-panel__value--link"
+                    onClick={() => { setFilters("publisher", g().publisher!); setFilters("offset", 0); setSelectedIndex(0); }}
+                  >{g().publisher}</span>
                 </div>
               </Show>
 
               <Show when={g().genre}>
                 <div class="detail-panel__field">
                   <span class="detail-panel__label">Genre:</span>
-                  <span class="detail-panel__value">{g().genre}</span>
+                  <span
+                    class="detail-panel__value detail-panel__value--link"
+                    onClick={() => { setFilters("genre", g().genre!); setFilters("offset", 0); setSelectedIndex(0); }}
+                  >{g().genre}</span>
                 </div>
               </Show>
 
               <Show when={g().series}>
                 <div class="detail-panel__field">
                   <span class="detail-panel__label">Series:</span>
-                  <span class="detail-panel__value">{g().series}</span>
+                  <span
+                    class="detail-panel__value detail-panel__value--link"
+                    onClick={() => { setFilters("series", g().series!); setFilters("offset", 0); setSelectedIndex(0); }}
+                  >{g().series}</span>
                 </div>
               </Show>
 
@@ -245,7 +267,7 @@ export const DetailPanel: Component = () => {
                       {(extra) => (
                         <div
                           class="detail-panel__extra-item"
-                          onClick={() => openPath(extra.path).catch(console.error)}
+                          onClick={() => invoke("open_path_with_shell", { path: extra.path }).catch(console.error)}
                           title={extra.path}
                         >
                           <span class="detail-panel__extra-kind">

@@ -379,6 +379,10 @@ body {
   line-height: var(--char-h);
   user-select: none;
   flex-shrink: 0;
+  /* Match body's always-visible scrollbar so columns stay aligned */
+  padding-right: var(--char-w);
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .game-list__header-col {
@@ -428,16 +432,22 @@ body {
   color: var(--fg-highlight);
 }
 
+/* Star must stay visible against the highlight background */
+.game-list__row--selected .game-list__col--fav,
+.game-list__row:hover .game-list__col--fav {
+  color: var(--fg-highlight);
+}
+
 .game-list__col {
   padding: 0 1ch;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.game-list__col--title { flex: 3; min-width: 20ch; }
-.game-list__col--year { width: 8ch; flex-shrink: 0; }
-.game-list__col--developer { flex: 2; min-width: 12ch; }
-.game-list__col--genre { flex: 2; min-width: 12ch; }
+.game-list__col--title { flex: 3; min-width: 0; }
+.game-list__col--year { width: 6ch; flex-shrink: 0; }
+.game-list__col--developer { flex: 2; min-width: 0; }
+.game-list__col--genre { flex: 2; min-width: 0; }
 .game-list__col--fav { width: 3ch; text-align: center; flex-shrink: 0; color: var(--fg-favorite); }
 
 /* ── Virtual scroll containers ───────────────── */
@@ -552,6 +562,16 @@ body {
   color: var(--fg-primary);
   word-wrap: break-word;
   overflow-wrap: break-word;
+}
+
+.detail-panel__value--link {
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.detail-panel__value--link:hover {
+  color: var(--bg-highlight);
 }
 
 .detail-panel__overview {

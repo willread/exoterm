@@ -1,6 +1,8 @@
 import { Component, Show, For, onMount, onCleanup, createSignal } from "solid-js";
-import { activeMenu, setActiveMenu, setActiveDialog, theme, setTheme, crtEnabled, setCrtEnabled, showBoxArt, setShowBoxArt, fontSize, setFontSize, fetchGames, setScanning, setScanStatus, refetchCollections } from "../lib/store";
+import { activeMenu, setActiveMenu, setActiveDialog, theme, setTheme, crtEnabled, setCrtEnabled, fontSize, setFontSize, fetchGames, fetchFilterOptions, setScanning, setScanStatus, refetchCollections, setFilters, setSelectedIndex, setSelectedGameId, setSidebarWidth, setDetailWidth, setSearchQuery } from "../lib/store";
 import { clearAllFavorites, rescanAllCollections } from "../lib/commands";
+
+const APP_VERSION = "__APP_VERSION__";
 import type { Theme } from "../lib/types";
 
 const THEMES: { label: string; value: Theme }[] = [
@@ -89,7 +91,11 @@ export const MenuBar: Component = () => {
                 const count = await rescanAllCollections();
                 setScanStatus(`Re-scan complete: ${count.toLocaleString()} games`);
                 refetchCollections();
+                // Reset selection so stale IDs don't break navigation
+                setSelectedIndex(0);
+                setSelectedGameId(null);
                 fetchGames();
+                fetchFilterOptions();
               } catch (e) {
                 setScanStatus(`Re-scan failed: ${e}`);
               } finally {
@@ -139,9 +145,6 @@ export const MenuBar: Component = () => {
             <div class="dropdown__item" onClick={() => { setCrtEnabled(!crtEnabled()); closeMenu(); }}>
               CRT Effects: {crtEnabled() ? "ON" : "OFF"}
             </div>
-            <div class="dropdown__item" onClick={() => { setShowBoxArt(!showBoxArt()); closeMenu(); }}>
-              Box Art: {showBoxArt() ? "ON" : "OFF"}
-            </div>
             <div class="dropdown__separator" />
             <div class="dropdown__item" onClick={() => {
               const next = Math.min(fontSize() + 2, 32);
@@ -171,6 +174,30 @@ export const MenuBar: Component = () => {
         <span class="menu-bar__hotkey">T</span>ools
         <Show when={activeMenu() === "tools"}>
           <div class="dropdown">
+            <div class="dropdown__item" onClick={() => {
+              // Reset all filters, search, selection and layout to defaults
+              setSearchQuery("");
+              setFilters("genre", "");
+              setFilters("developer", "");
+              setFilters("publisher", "");
+              setFilters("year", null);
+              setFilters("series", "");
+              setFilters("platform", "");
+              setFilters("favoritesOnly", false);
+              setFilters("hasExtras", false);
+              setFilters("sortBy", "title");
+              setFilters("sortDir", "asc");
+              setFilters("offset", 0);
+              setSidebarWidth(200);
+              setDetailWidth(320);
+              setSelectedIndex(0);
+              setSelectedGameId(null);
+              fetchFilterOptions();
+              closeMenu();
+            }}>
+              Reset UI
+            </div>
+            <div class="dropdown__separator" />
             <div class="dropdown__item" onClick={() => { setConfirmClearFavs(true); closeMenu(); }}>
               Clear All Favorites...
             </div>
@@ -187,7 +214,7 @@ export const MenuBar: Component = () => {
         <Show when={activeMenu() === "help"}>
           <div class="dropdown">
             <div class="dropdown__item" onClick={() => { setActiveDialog("about"); closeMenu(); }}>
-              About exoterm
+              About eXo Terminal v{APP_VERSION}
             </div>
           </div>
         </Show>

@@ -11,11 +11,11 @@ Built with Tauri 2, SolidJS, and way too much nostalgia.
 Point it at your eXoDOS (or eXoWin9x, etc.) folder and it scans the LaunchBox XML metadata into a local SQLite database. Then you get a fast, searchable, filterable game browser with edit.com vibes.
 
 - Fast full-text search
-- Filter by platform, genre, year, developer, publisher, series
-- 4 color themes (Big Blue, Black & White, Amber Phosphor, Green Phosphor)
-- Optional CRT shader (scanlines, screen curvature, phosphor glow)
+- Simple filtering / browsing
+- Color themes
+- Optional CRT shader
 - Favorites
-- Keyboard-driven — arrow keys, `/` to search, `Enter` to launch
+- Keyboard navigation
 
 ## Build
 
@@ -32,10 +32,11 @@ npm run package # standalone .exe + installer
 | Key | What it does |
 |-----|-------------|
 | `Enter` | Launch selected game |
-| `Up/Down` | Navigate game list |
+| `Up/Down` | Navigate list |
+| `Left/Right` | Navigate between sections |
 | `PgUp/PgDn` | Page through list |
 | `Home/End` | Jump to first/last |
-| `/` or `Ctrl+F` | Focus search bar |
+| `/` | Focus search bar |
 | `Enter` (in search) | Execute search |
 | `Esc` | Clear search + filters |
 | `F` | Toggle favorite |

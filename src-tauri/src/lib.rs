@@ -36,6 +36,7 @@ pub fn run() {
             commands::launch::launch_game,
             commands::launch::kill_game,
             commands::launch::send_game_input,
+            commands::launch::open_path_with_shell,
             commands::config::get_config,
             commands::config::set_config,
         ])

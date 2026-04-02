@@ -1,6 +1,7 @@
+- Add reset button to reset UI to default state (column sizes, filters, etc..)
+- Make genres, publishers, etc.. in right sidebar clickable and filter to that thing
 - Improve initial setup UX
-- Inline video, audio and pdf viewers
-- Win 3.1 / Win 95 themes
-- Search support for sidebar
 - Better category support
-- Expose extras and box art
+- Inline video, audio and pdf viewers
+- Search support for sidebar
+

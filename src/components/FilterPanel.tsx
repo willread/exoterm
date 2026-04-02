@@ -7,6 +7,8 @@ import {
   fetchFilterOptions,
   setSelectedIndex,
   activePanel,
+  setSearchQuery,
+  searchQuery,
 } from "../lib/store";
 
 // ── Genre tree building ──────────────────────────────────────────────────────
@@ -38,6 +40,7 @@ function sectionLabel(name: string, selected: string | number | null): string {
 // ── Any filters active? ──────────────────────────────────────────────────────
 function hasActiveFilters(): boolean {
   return (
+    searchQuery() !== "" ||
     filters.genre !== "" ||
     filters.developer !== "" ||
     filters.publisher !== "" ||
@@ -50,6 +53,7 @@ function hasActiveFilters(): boolean {
 }
 
 function resetAllFilters() {
+  setSearchQuery("");
   setFilters("genre", "");
   setFilters("developer", "");
   setFilters("publisher", "");

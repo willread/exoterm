@@ -82,6 +82,19 @@ pub fn kill_game(state: State<AppState>) -> Result<(), String> {
     Ok(())
 }
 
+/// Open a file or directory with the Windows shell default application.
+/// Uses `cmd /C start "" "path"` — the same mechanism Windows Explorer uses.
+#[tauri::command]
+pub fn open_path_with_shell(path: String) -> Result<(), String> {
+    Command::new("cmd")
+        .args(["/C", "start", "", &path])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|e| format!("Failed to open path: {}", e))?;
+    Ok(())
+}
+
 /// Kill the tracked game process tree using taskkill.
 pub fn kill_current_game(state: &AppState) {
     if let Ok(mut guard) = state.game_pid.lock() {
