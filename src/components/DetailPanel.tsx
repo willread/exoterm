@@ -1,6 +1,6 @@
 import { Component, For, Show, createResource, createSignal } from "solid-js";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { open as openPath } from "@tauri-apps/plugin-opener";
+import { openPath } from "@tauri-apps/plugin-opener";
 import { selectedGame, gameList, selectedIndex } from "../lib/store";
 import { getGameImages, getGameVideos, getGameExtras, launchGame } from "../lib/commands";
 import { guardedLaunch } from "../lib/keyboard";
