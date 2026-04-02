@@ -7,7 +7,6 @@ import {
   fetchFilterOptions,
   setSelectedIndex,
   activePanel,
-  setSearchQuery,
   searchQuery,
 } from "../lib/store";
 
@@ -53,7 +52,7 @@ function hasActiveFilters(): boolean {
 }
 
 function resetAllFilters() {
-  setSearchQuery("");
+  (window as any).__clearSearch?.();
   setFilters("genre", "");
   setFilters("developer", "");
   setFilters("publisher", "");

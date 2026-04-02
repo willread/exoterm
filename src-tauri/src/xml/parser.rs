@@ -54,6 +54,7 @@ pub fn parse_platform_xml(
     conn: &Connection,
     collection_id: i64,
     xml_path: &Path,
+    _preserve_favorites: bool,
     on_progress: &mut dyn FnMut(usize),
 ) -> Result<usize, String> {
     let filename = xml_path
@@ -115,10 +116,10 @@ pub fn parse_platform_xml(
                                     .and_then(|d| d.get(0..4))
                                     .and_then(|y| y.parse::<i32>().ok());
 
-                                let favorite = fields
-                                    .get("Favorite")
-                                    .map(|v| v == "true")
-                                    .unwrap_or(false);
+                                // Favorites are ALWAYS 0 on import — completely decoupled from LaunchBox.
+                                // User favorites are set in-app only and preserved across rescans
+                                // via the save/restore logic around the DELETE below.
+                                let insert_fav = 0i32;
 
                                 let genre = fields.get("Genres")
                                     .or_else(|| fields.get("Genre"))
@@ -155,7 +156,7 @@ pub fn parse_platform_xml(
                                         app_path,
                                         fields.get("RootFolder").filter(|s| !s.is_empty()),
                                         fields.get("Source").filter(|s| !s.is_empty()),
-                                        favorite as i32,
+                                        insert_fav,
                                         content_type,
                                         fields.get("ID").filter(|s| !s.is_empty()),
                                         fields.get("DatabaseID").filter(|s| !s.is_empty()),
@@ -173,11 +174,7 @@ pub fn parse_platform_xml(
                                     if !missing {
                                         if let Some(manual_path) = fields.get("ManualPath").filter(|p| !p.is_empty()) {
                                             let kind = extra_kind(manual_path);
-                                            // Derive a display name from the filename
-                                            let name = std::path::Path::new(&manual_path.replace('\\', "/"))
-                                                .file_stem()
-                                                .map(|s| s.to_string_lossy().to_string())
-                                                .unwrap_or_else(|| "Manual".to_string());
+                                            let name = "Manual".to_string();
                                             let _ = conn.execute(
                                                 "INSERT INTO game_extras (game_id, name, path, region, kind) VALUES (?1, ?2, ?3, NULL, ?4)",
                                                 rusqlite::params![game_id, name, manual_path, kind],
@@ -276,10 +273,14 @@ pub fn parse_platform_xml(
 }
 
 /// Scans all platform XML files in a collection's Data/Platforms/ directory.
+/// `preserve_favorites`: if true, user-set favorites are saved before clearing
+/// and restored after re-import (used during rescan).  On initial import the
+/// LaunchBox favorites from the XML are used as-is.
 pub fn scan_collection(
     conn: &Connection,
     collection_id: i64,
     collection_path: &str,
+    preserve_favorites: bool,
     on_progress: &mut dyn FnMut(usize, &str),
 ) -> Result<usize, String> {
     let platforms_dir = Path::new(collection_path).join("Data").join("Platforms");
@@ -288,6 +289,22 @@ pub fn scan_collection(
             "Platforms directory not found: {}",
             platforms_dir.display()
         ));
+    }
+
+    // Save user-set favorites by lb_id so they survive the rescan
+    let mut fav_ids: std::collections::HashSet<String> = std::collections::HashSet::new();
+    if preserve_favorites {
+        let mut stmt = conn
+            .prepare("SELECT lb_id FROM games WHERE collection_id = ? AND favorite = 1")
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([collection_id], |row| row.get::<_, Option<String>>(0))
+            .map_err(|e| e.to_string())?;
+        for r in rows {
+            if let Ok(Some(id)) = r {
+                fav_ids.insert(id);
+            }
+        }
     }
 
     // Clear existing games for this collection
@@ -313,11 +330,21 @@ pub fn scan_collection(
 
             on_progress(total_count, &filename);
 
-            let count = parse_platform_xml(conn, collection_id, &path, &mut |c| {
+            let count = parse_platform_xml(conn, collection_id, &path, preserve_favorites, &mut |c| {
                 on_progress(total_count + c, &filename);
             })?;
 
             total_count += count;
+        }
+    }
+
+    // Restore user-set favorites that were saved before the rescan
+    if !fav_ids.is_empty() {
+        for lb_id in &fav_ids {
+            let _ = conn.execute(
+                "UPDATE games SET favorite = 1 WHERE collection_id = ? AND lb_id = ?",
+                rusqlite::params![collection_id, lb_id],
+            );
         }
     }
 
@@ -440,7 +467,7 @@ mod tests {
         std::fs::write(&tmp, xml).unwrap();
 
         let mut progress_calls = 0usize;
-        let count = parse_platform_xml(&conn, collection_id, &tmp, &mut |_| {
+        let count = parse_platform_xml(&conn, collection_id, &tmp, false, &mut |_| {
             progress_calls += 1;
         })
         .unwrap();
@@ -504,7 +531,7 @@ mod tests {
         let tmp = std::env::temp_dir().join("test_no_path.xml");
         std::fs::write(&tmp, xml).unwrap();
 
-        let count = parse_platform_xml(&conn, collection_id, &tmp, &mut |_| {}).unwrap();
+        let count = parse_platform_xml(&conn, collection_id, &tmp, false, &mut |_| {}).unwrap();
         assert_eq!(count, 1, "Only game with ApplicationPath should be inserted");
 
         std::fs::remove_file(&tmp).ok();
@@ -536,7 +563,7 @@ mod tests {
         let tmp = std::env::temp_dir().join("test_fav_default.xml");
         std::fs::write(&tmp, xml).unwrap();
 
-        parse_platform_xml(&conn, collection_id, &tmp, &mut |_| {}).unwrap();
+        parse_platform_xml(&conn, collection_id, &tmp, false, &mut |_| {}).unwrap();
 
         let fav: i32 = conn
             .query_row("SELECT favorite FROM games WHERE title = 'Test Game'", [], |r| r.get(0))
@@ -606,7 +633,7 @@ mod tests {
         let tmp = std::env::temp_dir().join("test_extras.xml");
         std::fs::write(&tmp, xml).unwrap();
 
-        let count = parse_platform_xml(&conn, collection_id, &tmp, &mut |_| {}).unwrap();
+        let count = parse_platform_xml(&conn, collection_id, &tmp, false, &mut |_| {}).unwrap();
         assert_eq!(count, 1, "One game should be inserted");
 
         let game_id: i64 = conn
@@ -670,7 +697,7 @@ mod tests {
         let tmp = std::env::temp_dir().join("test_extras_orphan.xml");
         std::fs::write(&tmp, xml).unwrap();
 
-        parse_platform_xml(&conn, collection_id, &tmp, &mut |_| {}).unwrap();
+        parse_platform_xml(&conn, collection_id, &tmp, false, &mut |_| {}).unwrap();
 
         let extra_count: i64 = conn
             .query_row("SELECT COUNT(*) FROM game_extras", [], |r| r.get(0))

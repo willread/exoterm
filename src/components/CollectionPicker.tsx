@@ -121,7 +121,7 @@ export const CollectionPicker: Component = () => {
           </Show>
           <Show when={isAddMode() || isFirstRun()}>
             <button
-              class="dialog__button"
+              class="dialog__button dialog__button--primary"
               onClick={handleAdd}
               disabled={isScanning()}
             >
@@ -149,43 +149,51 @@ export const CollectionPicker: Component = () => {
       {/* Collection list with delete */}
       <Show when={(collections()?.length ?? 0) > 0}>
         <div style="margin-bottom: 1ch;">
-          <div style="color: var(--fg-dialog); margin-bottom: 2px;">Collections:</div>
           <For each={collections()}>
             {(c) => (
               <div style="display: flex; align-items: center; padding: 1px 0;">
                 <div style="flex: 1;">
                   {c.name} ({c.game_count.toLocaleString()} items)
                 </div>
-                <Show when={confirmDeleteId() === c.id} fallback={
-                  <span
-                    style="cursor: pointer; color: var(--fg-dialog); opacity: 0.7;"
-                    onClick={() => setConfirmDeleteId(c.id)}
-                    title="Delete collection"
-                  >
-                    [del]
-                  </span>
-                }>
-                  <span style="color: #AA0000;">
-                    Delete?{" "}
-                    <span
-                      style="cursor: pointer; text-decoration: underline;"
-                      onClick={() => handleDelete(c.id)}
-                    >
-                      Yes
-                    </span>
-                    {" / "}
-                    <span
-                      style="cursor: pointer; text-decoration: underline;"
-                      onClick={() => setConfirmDeleteId(null)}
-                    >
-                      No
-                    </span>
-                  </span>
-                </Show>
+                <span
+                  style="cursor: pointer; color: var(--fg-dialog); opacity: 0.7;"
+                  onClick={() => setConfirmDeleteId(c.id)}
+                  title="Delete collection"
+                >
+                  [del]
+                </span>
               </div>
             )}
           </For>
         </div>
+      </Show>
+
+      {/* Confirm-delete dialog */}
+      <Show when={confirmDeleteId() !== null}>
+        {(() => {
+          const target = collections()?.find(c => c.id === confirmDeleteId());
+          return (
+            <Dialog
+              title="Delete Collection"
+              visible={true}
+              onClose={() => setConfirmDeleteId(null)}
+              footer={
+                <div style="display: flex; gap: 2ch;">
+                  <button class="dialog__button dialog__button--primary" onClick={() => handleDelete(confirmDeleteId()!)}>
+                    {"< Delete >"}
+                  </button>
+                  <button class="dialog__button" onClick={() => setConfirmDeleteId(null)}>
+                    {"< Cancel >"}
+                  </button>
+                </div>
+              }
+            >
+              <div style="padding: 1ch 0;">
+                Delete <strong>{target?.name}</strong>? This cannot be undone.
+              </div>
+            </Dialog>
+          );
+        })()}
       </Show>
 
       {/* Add collection form: show in add mode, first run, or when manage mode transitions */}

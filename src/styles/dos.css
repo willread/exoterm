@@ -370,45 +370,43 @@ body {
   overflow: hidden;
 }
 
-.game-list__header {
-  display: flex;
+/* Header row lives inside the scroll body (position: sticky) so it shares
+   the exact same flex layout width as every data row. */
+.game-list__row--header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   background: var(--bg-secondary);
   color: var(--fg-title);
   border-bottom: 1px solid var(--border-color);
-  height: var(--char-h);
-  line-height: var(--char-h);
   user-select: none;
-  flex-shrink: 0;
-  /* Match body's always-visible scrollbar so columns stay aligned */
-  padding-right: var(--char-w);
-  box-sizing: border-box;
-  overflow: hidden;
+  cursor: default;
 }
 
-.game-list__header-col {
-  padding: 0 1ch;
+.game-list__row--header .game-list__col {
   cursor: pointer;
-  overflow: hidden;
-  white-space: nowrap;
+  color: var(--fg-title);
 }
 
-.game-list__header-col:hover {
+.game-list__row--header .game-list__col:hover {
   background: var(--bg-highlight);
   color: var(--fg-highlight);
 }
 
-.game-list__header-col--static {
+/* Fav column in header is not clickable */
+.game-list__row--header .game-list__col--fav {
   cursor: default;
 }
 
-.game-list__header-col--static:hover {
-  background: inherit;
-  color: inherit;
+.game-list__row--header .game-list__col--fav:hover {
+  background: var(--bg-secondary);
+  color: var(--fg-title);
 }
 
 .game-list__body {
   flex: 1;
   overflow-y: scroll;
+  overflow-x: hidden;
   position: relative;
 }
 
@@ -445,10 +443,10 @@ body {
 }
 
 .game-list__col--title { flex: 3; min-width: 0; }
-.game-list__col--year { width: 6ch; flex-shrink: 0; }
+.game-list__col--year { width: 6ch; min-width: 0; flex-shrink: 1; }
 .game-list__col--developer { flex: 2; min-width: 0; }
 .game-list__col--genre { flex: 2; min-width: 0; }
-.game-list__col--fav { width: 3ch; text-align: center; flex-shrink: 0; color: var(--fg-favorite); }
+.game-list__col--fav { width: 3ch; min-width: 0; text-align: center; flex-shrink: 1; color: var(--fg-favorite); }
 
 /* ── Virtual scroll containers ───────────────── */
 .game-list__virtual-spacer {
@@ -459,7 +457,7 @@ body {
   position: absolute;
   top: 0;
   left: 0;
-  min-width: 100%;
+  width: 100%;
 }
 
 .game-list__empty {
@@ -593,10 +591,56 @@ body {
   min-height: 0;
 }
 
+/* ── Screenshot slideshow ─────────────────────── */
+.detail-panel__slideshow {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.detail-panel__slideshow-nav {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1ch;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  height: var(--char-h);
+  line-height: var(--char-h);
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+
+.detail-panel__slideshow:hover .detail-panel__slideshow-nav {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.detail-panel__slideshow-arrow {
+  cursor: pointer;
+  padding: 0 0.5ch;
+  user-select: none;
+}
+
+.detail-panel__slideshow-arrow--disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.detail-panel__slideshow-counter {
+  min-width: 4ch;
+  text-align: center;
+  font-size: calc(var(--font-size) - 2px);
+}
+
 .detail-panel__boxart-wrap {
   display: flex;
   justify-content: center;
-  padding: 1ch;
+  padding: 0;
   border-bottom: 1px solid var(--border-color);
   background: #000;
   flex-shrink: 0;
@@ -722,6 +766,22 @@ body {
   color: var(--fg-highlight);
 }
 
+.detail-panel__extra-item--missing {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.detail-panel__extra-item--missing:hover {
+  background: transparent;
+  color: inherit;
+}
+
+.detail-panel__extra-missing {
+  font-size: 0.8em;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
 .detail-panel__empty {
   padding: 2ch;
   text-align: center;
@@ -784,6 +844,15 @@ body {
 .dialog__button--active {
   background: var(--bg-highlight);
   color: var(--fg-highlight);
+}
+
+.dialog__button--primary {
+  background: var(--bg-highlight);
+  color: var(--fg-highlight);
+}
+
+.dialog__button--primary:hover {
+  opacity: 0.85;
 }
 
 .dialog__input {

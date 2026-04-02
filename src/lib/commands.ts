@@ -31,6 +31,7 @@ export async function getGame(id: number): Promise<Game> {
 }
 
 export async function getFilterOptions(params: {
+  query?: string;
   content_type?: string;
   genre?: string;
   developer?: string;
@@ -71,6 +72,8 @@ export interface GameExtra {
   region: string | null;
   /** "pdf" | "image" | "video" | "audio" | "text" | "other" */
   kind: string;
+  /** Whether the file actually exists on disk */
+  exists: boolean;
 }
 
 export async function getGameExtras(id: number): Promise<GameExtra[]> {

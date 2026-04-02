@@ -38,8 +38,8 @@ pub fn scan_collection(
         )
         .map_err(|e| e.to_string())?;
 
-    // Scan XML files
-    let count = parser::scan_collection(&db, collection_id, &path, &mut |count, file| {
+    // Scan XML files — initial import: use LaunchBox favorites as-is
+    let count = parser::scan_collection(&db, collection_id, &path, false, &mut |count, file| {
         eprintln!("Scanning {}: {} games so far...", file, count);
     })?;
 
@@ -115,7 +115,8 @@ pub fn rescan_all_collections(state: State<AppState>) -> Result<usize, String> {
         )
         .map_err(|e| e.to_string())?;
 
-        let count = parser::scan_collection(&db, *collection_id, path, &mut |count, file| {
+        // Rescan: preserve user-set favorites (ignore LaunchBox favorites column)
+        let count = parser::scan_collection(&db, *collection_id, path, true, &mut |count, file| {
             eprintln!("Re-scanning {} ({}): {} games so far...", name, file, count);
         })?;
         total += count;

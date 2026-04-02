@@ -110,6 +110,8 @@ pub struct GameExtra {
     pub region: Option<String>,
     /// "pdf" | "image" | "video" | "audio" | "text" | "other"
     pub kind: String,
+    /// Whether the file actually exists on disk
+    pub exists: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

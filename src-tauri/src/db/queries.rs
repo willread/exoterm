@@ -320,8 +320,10 @@ fn get_distinct_values(
 /// Return available filter options. Each category is filtered by all OTHER active
 /// filters so the user sees only values that would produce results.
 /// Content types are always unfiltered so the user can always switch category.
+/// When `query` is non-empty, only games matching the FTS search are considered.
 pub fn get_filter_options(
     conn: &Connection,
+    query: &str,
     content_type: &str,
     genre: &str,
     developer: &str,
@@ -331,28 +333,62 @@ pub fn get_filter_options(
     platform: &str,
     favorites_only: bool,
 ) -> rusqlite::Result<FilterOptions> {
-    // Content types: always show all available (unfiltered)
+    // Build optional FTS join/clause for the search query
+    let use_fts = !query.is_empty();
+    let (fts_join, fts_clause) = if use_fts {
+        let escaped = query.replace('"', "\"\"");
+        let fts_param = format!("\"{}\"*", escaped);
+        // We'll inline the join into get_distinct_values via a subquery approach
+        // by using a CTE-style WHERE: restrict to IDs matching FTS
+        let id_subquery = format!(
+            "id IN (SELECT rowid FROM games_fts WHERE games_fts MATCH '{}')",
+            fts_param.replace('\'', "''")
+        );
+        ("", id_subquery)
+    } else {
+        ("", String::new())
+    };
+    let _ = fts_join; // unused when using subquery approach
+
+    // Helper: build a WHERE clause combining the FTS clause with other filters
+    let build_where = |base_filter: &str| -> String {
+        match (base_filter.is_empty(), fts_clause.is_empty()) {
+            (true, true) => String::new(),
+            (false, true) => base_filter.to_string(),
+            (true, false) => format!("WHERE {}", fts_clause),
+            (false, false) => format!("{} AND {}", base_filter, fts_clause),
+        }
+    };
+
+    // Content types: always show all available (unfiltered, ignoring search query too)
     let content_types = get_distinct_values(conn, "content_type", "")?;
 
     // Each category excludes itself so you can still switch within that category
-    let genre_where = build_option_filter(
+    let genre_base = build_option_filter(
         content_type, genre, developer, publisher, year, series, platform, favorites_only, "genre",
     );
-    let dev_where = build_option_filter(
+    let dev_base = build_option_filter(
         content_type, genre, developer, publisher, year, series, platform, favorites_only, "developer",
     );
-    let pub_where = build_option_filter(
+    let pub_base = build_option_filter(
         content_type, genre, developer, publisher, year, series, platform, favorites_only, "publisher",
     );
-    let year_where = build_option_filter(
+    let year_base = build_option_filter(
         content_type, genre, developer, publisher, year, series, platform, favorites_only, "year",
     );
-    let series_where = build_option_filter(
+    let series_base = build_option_filter(
         content_type, genre, developer, publisher, year, series, platform, favorites_only, "series",
     );
-    let platform_where = build_option_filter(
+    let platform_base = build_option_filter(
         content_type, genre, developer, publisher, year, series, platform, favorites_only, "platform",
     );
+
+    let genre_where = build_where(&genre_base);
+    let dev_where = build_where(&dev_base);
+    let pub_where = build_where(&pub_base);
+    let year_where = build_where(&year_base);
+    let series_where = build_where(&series_base);
+    let platform_where = build_where(&platform_base);
 
     let genres = get_distinct_values(conn, "genre", &genre_where)?;
     let developers = get_distinct_values(conn, "developer", &dev_where)?;

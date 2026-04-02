@@ -59,6 +59,7 @@ pub fn get_game(state: State<AppState>, id: i64) -> Result<Game, String> {
 #[tauri::command(rename_all = "snake_case")]
 pub fn get_filter_options(
     state: State<AppState>,
+    query: Option<String>,
     content_type: Option<String>,
     genre: Option<String>,
     developer: Option<String>,
@@ -71,6 +72,7 @@ pub fn get_filter_options(
     let db = state.db.lock().map_err(|e| e.to_string())?;
     queries::get_filter_options(
         &db,
+        &query.unwrap_or_default(),
         &content_type.unwrap_or_default(),
         &genre.unwrap_or_default(),
         &developer.unwrap_or_default(),
@@ -83,13 +85,18 @@ pub fn get_filter_options(
     .map_err(|e| e.to_string())
 }
 
-/// Image category priority: box art first, then screenshots
-const IMAGE_CATEGORIES: &[&str] = &[
-    "Box - Front",
-    "Box - Front - Reconstructed",
-    "Fanart - Box - Front",
-    "Screenshot - Game Title",
-    "Screenshot - Gameplay",
+/// Priority order for image categories — earlier = higher priority.
+/// Directories not in this list are appended after in alphabetical order.
+const CATEGORY_PRIORITY: &[&str] = &[
+    "box - front",
+    "box - front - reconstructed",
+    "fanart - box - front",
+    "screenshot - game title",
+    "screenshot - gameplay",
+    "screenshot - game select",
+    "screenshot - high scores",
+    "screenshot - extras",
+    "clear logo",
 ];
 
 /// Sanitize a game title for matching against LaunchBox image filenames.
@@ -123,24 +130,64 @@ pub fn get_game_images(state: State<AppState>, id: i64) -> Result<Vec<GameImage>
 
     let sanitized = sanitize_title_for_filename(&title);
     // Images base: {collection}/Images/{platform}/
-    let images_base = PathBuf::from(&collection_path)
-        .join("Images")
-        .join(&platform);
+    // Try exact path first; fall back to case-insensitive directory match.
+    let images_base = {
+        let exact = PathBuf::from(&collection_path).join("Images").join(&platform);
+        if exact.is_dir() {
+            exact
+        } else {
+            let images_dir = PathBuf::from(&collection_path).join("Images");
+            let platform_lower = platform.to_lowercase();
+            std::fs::read_dir(&images_dir)
+                .ok()
+                .and_then(|rd| {
+                    rd.flatten().find(|e| {
+                        e.file_name().to_string_lossy().to_lowercase() == platform_lower
+                    })
+                })
+                .map(|e| e.path())
+                .unwrap_or_else(|| PathBuf::from(&collection_path).join("Images").join(&platform))
+        }
+    };
 
-    if !images_base.exists() {
+    if !images_base.is_dir() {
         return Ok(vec![]);
     }
 
+    // Discover all category subdirectories that actually exist, sorted by priority
+    let mut cat_dirs: Vec<(String, PathBuf)> = std::fs::read_dir(&images_base)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter_map(|e| {
+            let path = e.path();
+            if path.is_dir() {
+                let name = e.file_name().to_string_lossy().to_string();
+                Some((name, path))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // Sort: known high-priority categories first, then alphabetical
+    cat_dirs.sort_by(|(a, _), (b, _)| {
+        let a_pri = CATEGORY_PRIORITY.iter().position(|&p| p == a.to_lowercase().as_str());
+        let b_pri = CATEGORY_PRIORITY.iter().position(|&p| p == b.to_lowercase().as_str());
+        match (a_pri, b_pri) {
+            (Some(ai), Some(bi)) => ai.cmp(&bi),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => a.cmp(b),
+        }
+    });
+
+    let sanitized_lower = sanitized.to_lowercase();
     let mut results = Vec::new();
 
-    for category in IMAGE_CATEGORIES {
-        let cat_dir = images_base.join(category);
-        if !cat_dir.is_dir() {
-            continue;
-        }
-
-        // Collect matching files: name must start with "{sanitized}-" (LaunchBox suffix format)
-        let mut candidates: Vec<PathBuf> = std::fs::read_dir(&cat_dir)
+    for (cat_name, cat_dir) in &cat_dirs {
+        // Collect matching files — case-insensitive stem comparison
+        let mut candidates: Vec<PathBuf> = std::fs::read_dir(cat_dir)
             .into_iter()
             .flatten()
             .flatten()
@@ -154,20 +201,20 @@ pub fn get_game_images(state: State<AppState>, id: i64) -> Result<Vec<GameImage>
                 } else {
                     return false;
                 }
-                // Filename stem must start with the sanitized title followed by '-'
                 if let Some(stem) = p.file_stem() {
-                    let stem = stem.to_string_lossy();
-                    stem.starts_with(&format!("{}-", sanitized))
+                    let stem = stem.to_string_lossy().to_lowercase();
+                    // Match "{title}.png" OR "{title}-01.png" (case-insensitive)
+                    stem == sanitized_lower.as_str()
+                        || stem.starts_with(&format!("{}-", sanitized_lower))
                 } else {
                     false
                 }
             })
             .collect();
 
-        // Sort so the lowest-numbered variant (-00, -01 …) comes first
         candidates.sort();
 
-        if let Some(path) = candidates.first() {
+        for path in &candidates {
             if let Ok(data) = std::fs::read(path) {
                 use base64::Engine;
                 let b64 = base64::engine::general_purpose::STANDARD.encode(&data);
@@ -182,14 +229,10 @@ pub fn get_game_images(state: State<AppState>, id: i64) -> Result<Vec<GameImage>
                     _ => "image/png",
                 };
                 results.push(GameImage {
-                    category: category.to_string(),
+                    category: cat_name.clone(),
                     data_url: format!("data:{};base64,{}", mime, b64),
                 });
             }
-        }
-
-        if results.len() >= 2 {
-            break; // box art + one screenshot is enough
         }
     }
 
@@ -229,6 +272,7 @@ pub fn get_game_extras(state: State<AppState>, id: i64) -> Result<Vec<GameExtra>
                 path: row.get(2)?,
                 region: row.get(3)?,
                 kind: row.get(4)?,
+                exists: false, // resolved below after path is made absolute
             })
         })
         .map_err(|e| e.to_string())?
@@ -237,8 +281,11 @@ pub fn get_game_extras(state: State<AppState>, id: i64) -> Result<Vec<GameExtra>
             // Resolve relative path (Windows backslashes) to absolute
             let rel = e.path.replace('\\', std::path::MAIN_SEPARATOR_STR);
             let abs = collection_root.join(&rel);
+            let abs_path = abs.to_string_lossy().to_string();
+            let exists = abs.is_file();
             GameExtra {
-                path: abs.to_string_lossy().to_string(),
+                path: abs_path,
+                exists,
                 ..e
             }
         })

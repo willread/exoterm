@@ -122,42 +122,31 @@ export const GameList: Component = () => {
 
   return (
     <div class="game-list">
-      <div class="game-list__header no-select">
-        <div class="game-list__header-col game-list__col--fav game-list__header-col--static" title="Favorite">
-          *
-        </div>
-        <div
-          class="game-list__header-col game-list__col--title"
-          onClick={() => handleSort("title")}
-        >
-          Title{sortIndicator("title")}
-        </div>
-        <div
-          class="game-list__header-col game-list__col--year"
-          onClick={() => handleSort("year")}
-        >
-          Year{sortIndicator("year")}
-        </div>
-        <div
-          class="game-list__header-col game-list__col--developer"
-          onClick={() => handleSort("developer")}
-        >
-          Developer{sortIndicator("developer")}
-        </div>
-        <div
-          class="game-list__header-col game-list__col--genre"
-          onClick={() => handleSort("genre")}
-        >
-          Genre{sortIndicator("genre")}
-        </div>
-      </div>
-
       <div
         class="game-list__body"
         ref={listRef}
         tabindex="-1"
         onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
       >
+        {/* Sticky header lives INSIDE the scroll container so it shares
+            the exact same layout width as every data row — perfect alignment
+            is structurally guaranteed, no measurement tricks needed. */}
+        <div class="game-list__row game-list__row--header no-select">
+          <div class="game-list__col game-list__col--fav" title="Favorite">*</div>
+          <div class="game-list__col game-list__col--title" onClick={() => handleSort("title")}>
+            Title{sortIndicator("title")}
+          </div>
+          <div class="game-list__col game-list__col--year" onClick={() => handleSort("year")}>
+            Year{sortIndicator("year")}
+          </div>
+          <div class="game-list__col game-list__col--developer" onClick={() => handleSort("developer")}>
+            Developer{sortIndicator("developer")}
+          </div>
+          <div class="game-list__col game-list__col--genre" onClick={() => handleSort("genre")}>
+            Genre{sortIndicator("genre")}
+          </div>
+        </div>
+
         <Show
           when={gameList().length > 0}
           fallback={

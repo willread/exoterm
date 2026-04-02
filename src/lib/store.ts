@@ -6,7 +6,7 @@ import type { SortDir, SortField, Theme, GameSummary, FilterOptions } from "./ty
 // ── App state ──────────────────────────────────
 export const [theme, setTheme] = createSignal<Theme>("blue");
 export const [crtEnabled, setCrtEnabled] = createSignal(false);
-export const [showBoxArt, setShowBoxArt] = createSignal(false);
+export const [showBoxArt, setShowBoxArt] = createSignal(true);
 export const [activePanel, setActivePanel] = createSignal<"sidebar" | "list" | "detail">("list");
 export const [searchFocused, setSearchFocused] = createSignal(false);
 export const [fontSize, setFontSize] = createSignal(16); // px, default 16
@@ -75,6 +75,7 @@ export async function fetchFilterOptions() {
   const seq = ++_filterOptSeq;
   try {
     const result = await getFilterOptions({
+      query: searchQuery() || undefined,
       content_type: filters.contentType || undefined,
       genre: filters.genre || undefined,
       developer: filters.developer || undefined,
@@ -153,7 +154,8 @@ export function getPersistedState(): Record<string, any> {
 export function restorePersistedState(saved: Record<string, any>): void {
   if (saved.theme) setTheme(saved.theme);
   if (saved.crtEnabled !== undefined) setCrtEnabled(saved.crtEnabled);
-  if (saved.showBoxArt !== undefined) setShowBoxArt(saved.showBoxArt);
+  // Note: showBoxArt intentionally not restored from old persisted state
+  // (old stored value of false pre-dates the toggle being functional)
   if (saved.fontSize) setFontSize(saved.fontSize);
   if (saved.sidebarWidth) setSidebarWidth(saved.sidebarWidth);
   if (saved.detailWidth) setDetailWidth(saved.detailWidth);

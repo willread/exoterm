@@ -1,7 +1,7 @@
 import { Component, For, Show, createEffect, createResource, createSignal } from "solid-js";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { invoke } from "@tauri-apps/api/core";
-import { selectedGame, gameList, selectedIndex, setFilters, setSelectedIndex } from "../lib/store";
+import { selectedGame, gameList, selectedIndex, setFilters, setSelectedIndex, showBoxArt } from "../lib/store";
 import { getGameImages, getGameVideos, getGameExtras, launchGame } from "../lib/commands";
 import { guardedLaunch } from "../lib/keyboard";
 import type { GameExtra, GameImage } from "../lib/commands";
@@ -70,8 +70,9 @@ const BoxArt: Component<{ image: GameImage; quantize: boolean }> = (props) => {
 
 export const DetailPanel: Component = () => {
   const game = () => selectedGame();
-  const [quantize, setQuantize] = createSignal(true);
+  const [quantize] = createSignal(true);
   const [videoIndex, setVideoIndex] = createSignal(0);
+  const [imageIndex, setImageIndex] = createSignal(0);
   const [extrasOpen, setExtrasOpen] = createSignal(true);
 
   const [images] = createResource(
@@ -101,7 +102,47 @@ export const DetailPanel: Component = () => {
     return vs[idx];
   };
 
-  const boxArt = () => images()?.[0] ?? null;
+  // Reset image slideshow index when game changes
+  createEffect(() => {
+    game()?.id;
+    setImageIndex(0);
+  });
+
+  const currentImage = () => {
+    const imgs = images();
+    if (!imgs || imgs.length === 0) return null;
+    return imgs[Math.min(imageIndex(), imgs.length - 1)];
+  };
+
+  /** Clear all OTHER filters then apply exactly one filter value. */
+  const applyFilter = (field: "developer" | "publisher" | "genre" | "series" | "platform", value: string) => {
+    (window as any).__clearSearch?.();
+    setFilters("genre", "");
+    setFilters("developer", "");
+    setFilters("publisher", "");
+    setFilters("year", null);
+    setFilters("series", "");
+    setFilters("platform", "");
+    setFilters("favoritesOnly", false);
+    setFilters("hasExtras", false);
+    setFilters(field, value);
+    setFilters("offset", 0);
+    setSelectedIndex(0);
+  };
+
+  const applyYearFilter = (year: number) => {
+    (window as any).__clearSearch?.();
+    setFilters("genre", "");
+    setFilters("developer", "");
+    setFilters("publisher", "");
+    setFilters("year", year);
+    setFilters("series", "");
+    setFilters("platform", "");
+    setFilters("favoritesOnly", false);
+    setFilters("hasExtras", false);
+    setFilters("offset", 0);
+    setSelectedIndex(0);
+  };
 
   const handlePlay = () => {
     const games = gameList();
@@ -151,20 +192,28 @@ export const DetailPanel: Component = () => {
               )}
             </Show>
 
-            {/* Box art */}
-            <Show when={boxArt()}>
-              {(img) => <BoxArt image={img()} quantize={quantize()} />}
-            </Show>
-
-            {/* 256-color toggle */}
-            <Show when={images() && images()!.length > 0}>
-              <div
-                class="detail-panel__quantize-toggle"
-                onClick={() => setQuantize(!quantize())}
-                title="Toggle 256-color VGA quantize filter"
-              >
-                [{quantize() ? "x" : " "}] 256-color filter
-              </div>
+            {/* Screenshot slideshow (only when screenshots are enabled) */}
+            <Show when={showBoxArt() && currentImage()}>
+              {(img) => (
+                <div class="detail-panel__slideshow">
+                  <BoxArt image={img()} quantize={quantize()} />
+                  <Show when={images() && images()!.length > 1}>
+                    <div class="detail-panel__slideshow-nav">
+                      <span
+                        class={`detail-panel__slideshow-arrow${imageIndex() === 0 ? " detail-panel__slideshow-arrow--disabled" : ""}`}
+                        onClick={() => imageIndex() > 0 && setImageIndex((i) => i - 1)}
+                      >{"◄"}</span>
+                      <span class="detail-panel__slideshow-counter">
+                        {imageIndex() + 1}/{images()!.length}
+                      </span>
+                      <span
+                        class={`detail-panel__slideshow-arrow${imageIndex() >= images()!.length - 1 ? " detail-panel__slideshow-arrow--disabled" : ""}`}
+                        onClick={() => imageIndex() < images()!.length - 1 && setImageIndex((i) => i + 1)}
+                      >{"►"}</span>
+                    </div>
+                  </Show>
+                </div>
+              )}
             </Show>
 
             {/* Metadata — scrollable middle section */}
@@ -181,7 +230,7 @@ export const DetailPanel: Component = () => {
                   <span class="detail-panel__label">Year:</span>
                   <span
                     class="detail-panel__value detail-panel__value--link"
-                    onClick={() => { setFilters("year", g().release_year); setFilters("offset", 0); setSelectedIndex(0); }}
+                    onClick={() => applyYearFilter(g().release_year!)}
                   >{g().release_year}</span>
                 </div>
               </Show>
@@ -191,7 +240,7 @@ export const DetailPanel: Component = () => {
                   <span class="detail-panel__label">Developer:</span>
                   <span
                     class="detail-panel__value detail-panel__value--link"
-                    onClick={() => { setFilters("developer", g().developer!); setFilters("offset", 0); setSelectedIndex(0); }}
+                    onClick={() => applyFilter("developer", g().developer!)}
                   >{g().developer}</span>
                 </div>
               </Show>
@@ -201,7 +250,7 @@ export const DetailPanel: Component = () => {
                   <span class="detail-panel__label">Publisher:</span>
                   <span
                     class="detail-panel__value detail-panel__value--link"
-                    onClick={() => { setFilters("publisher", g().publisher!); setFilters("offset", 0); setSelectedIndex(0); }}
+                    onClick={() => applyFilter("publisher", g().publisher!)}
                   >{g().publisher}</span>
                 </div>
               </Show>
@@ -209,20 +258,32 @@ export const DetailPanel: Component = () => {
               <Show when={g().genre}>
                 <div class="detail-panel__field">
                   <span class="detail-panel__label">Genre:</span>
-                  <span
-                    class="detail-panel__value detail-panel__value--link"
-                    onClick={() => { setFilters("genre", g().genre!); setFilters("offset", 0); setSelectedIndex(0); }}
-                  >{g().genre}</span>
+                  <span class="detail-panel__value">
+                    <For each={g().genre!.split(";").map(s => s.trim()).filter(s => s.length > 0)}>
+                      {(genre, i) => (
+                        <>
+                          <Show when={i() > 0}><span style="opacity:0.5"> · </span></Show>
+                          <span class="detail-panel__value--link" onClick={() => applyFilter("genre", genre)}>{genre}</span>
+                        </>
+                      )}
+                    </For>
+                  </span>
                 </div>
               </Show>
 
               <Show when={g().series}>
                 <div class="detail-panel__field">
                   <span class="detail-panel__label">Series:</span>
-                  <span
-                    class="detail-panel__value detail-panel__value--link"
-                    onClick={() => { setFilters("series", g().series!); setFilters("offset", 0); setSelectedIndex(0); }}
-                  >{g().series}</span>
+                  <span class="detail-panel__value">
+                    <For each={g().series!.split(";").map(s => s.trim()).filter(s => s.length > 0)}>
+                      {(s, i) => (
+                        <>
+                          <Show when={i() > 0}><span style="opacity:0.5"> · </span></Show>
+                          <span class="detail-panel__value--link" onClick={() => applyFilter("series", s)}>{s}</span>
+                        </>
+                      )}
+                    </For>
+                  </span>
                 </div>
               </Show>
 
@@ -266,9 +327,9 @@ export const DetailPanel: Component = () => {
                     <For each={extras()}>
                       {(extra) => (
                         <div
-                          class="detail-panel__extra-item"
-                          onClick={() => invoke("open_path_with_shell", { path: extra.path }).catch(console.error)}
-                          title={extra.path}
+                          class={`detail-panel__extra-item${extra.exists ? "" : " detail-panel__extra-item--missing"}`}
+                          onClick={() => extra.exists && invoke("open_path_with_shell", { path: extra.path }).catch(console.error)}
+                          title={extra.exists ? extra.path : `File not found: ${extra.path}`}
                         >
                           <span class="detail-panel__extra-kind">
                             {extraKindGlyph(extra.kind)}
@@ -280,6 +341,9 @@ export const DetailPanel: Component = () => {
                             <span class="detail-panel__extra-region">
                               {extra.region}
                             </span>
+                          </Show>
+                          <Show when={!extra.exists}>
+                            <span class="detail-panel__extra-missing"> [missing]</span>
                           </Show>
                         </div>
                       )}

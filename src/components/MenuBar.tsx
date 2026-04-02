@@ -1,5 +1,5 @@
 import { Component, Show, For, onMount, onCleanup, createSignal } from "solid-js";
-import { activeMenu, setActiveMenu, setActiveDialog, theme, setTheme, crtEnabled, setCrtEnabled, fontSize, setFontSize, fetchGames, fetchFilterOptions, setScanning, setScanStatus, refetchCollections, setFilters, setSelectedIndex, setSelectedGameId, setSidebarWidth, setDetailWidth, setSearchQuery } from "../lib/store";
+import { activeMenu, setActiveMenu, setActiveDialog, theme, setTheme, crtEnabled, setCrtEnabled, fontSize, setFontSize, showBoxArt, setShowBoxArt, fetchGames, fetchFilterOptions, setScanning, setScanStatus, refetchCollections, setFilters, setSelectedIndex, setSelectedGameId, setSidebarWidth, setDetailWidth } from "../lib/store";
 import { clearAllFavorites, rescanAllCollections } from "../lib/commands";
 import type { Theme } from "../lib/types";
 
@@ -16,6 +16,37 @@ export const MenuBar: Component = () => {
   let menuBarRef: HTMLDivElement | undefined;
   const [themeSubmenuOpen, setThemeSubmenuOpen] = createSignal(false);
   const [confirmClearFavs, setConfirmClearFavs] = createSignal(false);
+  const [confirmResetUI, setConfirmResetUI] = createSignal(false);
+
+  const doResetUI = () => {
+    (window as any).__clearSearch?.();
+    setFilters("genre", "");
+    setFilters("developer", "");
+    setFilters("publisher", "");
+    setFilters("year", null);
+    setFilters("series", "");
+    setFilters("platform", "");
+    setFilters("favoritesOnly", false);
+    setFilters("hasExtras", false);
+    setFilters("sortBy", "title");
+    setFilters("sortDir", "asc");
+    setFilters("offset", 0);
+    setSidebarWidth(200);
+    setDetailWidth(320);
+    setSelectedIndex(0);
+    setSelectedGameId(null);
+    setTheme("blue");
+    setCrtEnabled(false);
+    setShowBoxArt(true);
+    const defaultSize = 16;
+    setFontSize(defaultSize);
+    document.documentElement.style.setProperty("--font-size", defaultSize + "px");
+    document.documentElement.style.setProperty("--char-h", defaultSize + "px");
+    document.documentElement.setAttribute("data-theme", "blue");
+    document.documentElement.setAttribute("data-crt", "false");
+    fetchFilterOptions();
+    setConfirmResetUI(false);
+  };
 
   const toggleMenu = (menu: string) => {
     setActiveMenu(activeMenu() === menu ? null : menu);
@@ -143,6 +174,9 @@ export const MenuBar: Component = () => {
             <div class="dropdown__item" onClick={() => { setCrtEnabled(!crtEnabled()); closeMenu(); }}>
               CRT Effects: {crtEnabled() ? "ON" : "OFF"}
             </div>
+            <div class="dropdown__item" onClick={() => { setShowBoxArt(!showBoxArt()); closeMenu(); }}>
+              Screenshots: {showBoxArt() ? "ON" : "OFF"}
+            </div>
             <div class="dropdown__separator" />
             <div class="dropdown__item" onClick={() => {
               const next = Math.min(fontSize() + 2, 32);
@@ -172,28 +206,8 @@ export const MenuBar: Component = () => {
         <span class="menu-bar__hotkey">T</span>ools
         <Show when={activeMenu() === "tools"}>
           <div class="dropdown">
-            <div class="dropdown__item" onClick={() => {
-              // Reset all filters, search, selection and layout to defaults
-              setSearchQuery("");
-              setFilters("genre", "");
-              setFilters("developer", "");
-              setFilters("publisher", "");
-              setFilters("year", null);
-              setFilters("series", "");
-              setFilters("platform", "");
-              setFilters("favoritesOnly", false);
-              setFilters("hasExtras", false);
-              setFilters("sortBy", "title");
-              setFilters("sortDir", "asc");
-              setFilters("offset", 0);
-              setSidebarWidth(200);
-              setDetailWidth(320);
-              setSelectedIndex(0);
-              setSelectedGameId(null);
-              fetchFilterOptions();
-              closeMenu();
-            }}>
-              Reset UI
+            <div class="dropdown__item" onClick={() => { setConfirmResetUI(true); closeMenu(); }}>
+              Reset To Defaults...
             </div>
             <div class="dropdown__separator" />
             <div class="dropdown__item" onClick={() => { setConfirmClearFavs(true); closeMenu(); }}>
@@ -212,7 +226,7 @@ export const MenuBar: Component = () => {
         <Show when={activeMenu() === "help"}>
           <div class="dropdown">
             <div class="dropdown__item" onClick={() => { setActiveDialog("about"); closeMenu(); }}>
-              About eXo Terminal
+              About exoterm
             </div>
           </div>
         </Show>
@@ -237,12 +251,28 @@ export const MenuBar: Component = () => {
               Clear all favorites? This cannot be undone.
             </div>
             <div class="dialog__footer">
-              <button class="dialog__button" onClick={() => setConfirmClearFavs(false)}>Cancel</button>
-              <button class="dialog__button" onClick={async () => {
+              <button class="dialog__button" onClick={() => setConfirmClearFavs(false)}>{"< Cancel >"}</button>
+              <button class="dialog__button dialog__button--primary" onClick={async () => {
                 await clearAllFavorites();
                 setConfirmClearFavs(false);
                 fetchGames();
-              }}>Clear</button>
+              }}>{"< Clear All >"}</button>
+            </div>
+          </div>
+        </div>
+      </Show>
+
+      {/* Confirm reset to defaults dialog */}
+      <Show when={confirmResetUI()}>
+        <div class="dialog-overlay" onClick={() => setConfirmResetUI(false)}>
+          <div class="dialog" onClick={(e) => e.stopPropagation()}>
+            <div class="dialog__title">Reset To Defaults</div>
+            <div class="dialog__body">
+              Reset all settings to factory defaults? This includes theme, zoom, layout, and filters.
+            </div>
+            <div class="dialog__footer">
+              <button class="dialog__button" onClick={() => setConfirmResetUI(false)}>{"< Cancel >"}</button>
+              <button class="dialog__button dialog__button--primary" onClick={doResetUI}>{"< Reset >"}</button>
             </div>
           </div>
         </div>

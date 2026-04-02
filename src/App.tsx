@@ -21,20 +21,24 @@ import {
   setActivePanel,
 
   fetchGames,
+  fetchFilterOptions,
+  refetchCollections,
   sidebarWidth,
   setSidebarWidth,
   detailWidth,
   setDetailWidth,
   fontSize,
   setFontSize,
-  filters,
   setFilters,
+  setSelectedGameId,
+  setScanning,
+  setScanStatus,
   getPersistedState,
   restorePersistedState,
 } from "./lib/store";
 import { loadState, saveStateDebounced } from "./lib/persist";
 import { initKeyboardHandler, registerKey, guardedLaunch } from "./lib/keyboard";
-import { launchGame, toggleFavorite } from "./lib/commands";
+import { launchGame, toggleFavorite, rescanAllCollections } from "./lib/commands";
 import { ResizeHandle } from "./components/ResizeHandle";
 
 const App: Component = () => {
@@ -65,6 +69,28 @@ const App: Component = () => {
     // Reveal the app
     const root = document.getElementById("root");
     if (root) root.style.visibility = "visible";
+
+    // Auto-rescan on startup (only if collections exist)
+    refetchCollections();
+    // Small delay so the collections resource resolves first
+    setTimeout(async () => {
+      try {
+        setScanning(true);
+        setScanStatus("Scanning collections...");
+        const count = await rescanAllCollections();
+        setScanStatus(`Ready — ${count.toLocaleString()} games`);
+        refetchCollections();
+        fetchFilterOptions();
+        fetchGames();
+        setSelectedIndex(0);
+        setSelectedGameId(null);
+      } catch (_) {
+        // No collections yet or scan error — silently ignore
+        setScanStatus("");
+      } finally {
+        setTimeout(() => setScanning(false), 2000);
+      }
+    }, 100);
 
     // Initialize keyboard handler
     initKeyboardHandler();
@@ -329,7 +355,7 @@ const App: Component = () => {
         }
       >
         <div style="text-align: center; padding: 1ch;">
-          <div>eXo Terminal v{__APP_VERSION__}</div>
+          <div>exoterm v{__APP_VERSION__}</div>
           <div style="margin-top: 4px;">
             A DOS-style frontend for eXo collections
           </div>
