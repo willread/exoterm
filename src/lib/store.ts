@@ -33,6 +33,7 @@ export const [filters, setFilters] = createStore({
   series: "" as string,
   platform: "" as string,
   favoritesOnly: false,
+  hasExtras: false,
   sortBy: "title" as SortField,
   sortDir: "asc" as SortDir,
   offset: 0,
@@ -81,6 +82,7 @@ export async function fetchFilterOptions() {
       series: filters.series || undefined,
       platform: filters.platform || undefined,
       favorites_only: filters.favoritesOnly || undefined,
+      // Note: has_extras not passed to filter options — it's a binary toggle, not a category
     });
     if (seq !== _filterOptSeq) return;
     setFilterOptions(result);
@@ -108,6 +110,7 @@ export async function fetchGames() {
       series: filters.series ? [filters.series] : undefined,
       platform: filters.platform ? [filters.platform] : undefined,
       favorites_only: filters.favoritesOnly || undefined,
+      has_extras: filters.hasExtras || undefined,
       sort_by: filters.sortBy,
       sort_dir: filters.sortDir,
       offset: filters.offset,
@@ -140,6 +143,7 @@ export function getPersistedState(): Record<string, any> {
     series: filters.series,
     platform: filters.platform,
     favoritesOnly: filters.favoritesOnly,
+    hasExtras: filters.hasExtras,
   };
 }
 
@@ -160,4 +164,5 @@ export function restorePersistedState(saved: Record<string, any>): void {
   if (saved.series !== undefined) setFilters("series", saved.series);
   if (saved.platform !== undefined) setFilters("platform", saved.platform);
   if (saved.favoritesOnly !== undefined) setFilters("favoritesOnly", saved.favoritesOnly);
+  if (saved.hasExtras !== undefined) setFilters("hasExtras", saved.hasExtras);
 }

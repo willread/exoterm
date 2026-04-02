@@ -44,7 +44,8 @@ function hasActiveFilters(): boolean {
     filters.year != null ||
     filters.series !== "" ||
     filters.platform !== "" ||
-    filters.favoritesOnly
+    filters.favoritesOnly ||
+    filters.hasExtras
   );
 }
 
@@ -56,6 +57,7 @@ function resetAllFilters() {
   setFilters("series", "");
   setFilters("platform", "");
   setFilters("favoritesOnly", false);
+  setFilters("hasExtras", false);
   setFilters("offset", 0);
   setSelectedIndex(0);
 }
@@ -82,6 +84,7 @@ type SectionKey = "platform" | "genre" | "year" | "developer" | "publisher" | "s
 type NavItem =
   | { type: "reset" }
   | { type: "favorites" }
+  | { type: "has-extras" }
   | { type: "section-header"; key: SectionKey; label: string; selected: string | number | null }
   | { type: "item"; field: "genre" | "developer" | "publisher" | "series" | "platform"; value: string; label: string }
   | { type: "year-item"; value: number }
@@ -145,6 +148,7 @@ export const FilterPanel: Component = () => {
 
     items.push({ type: "reset" });
     items.push({ type: "favorites" });
+    items.push({ type: "has-extras" });
 
     if (o.platforms.length > 1) {
       items.push({ type: "section-header", key: "platform", label: "Platform", selected: filters.platform || null });
@@ -238,6 +242,11 @@ export const FilterPanel: Component = () => {
         setFilters("offset", 0);
         setSelectedIndex(0);
         break;
+      case "has-extras":
+        setFilters("hasExtras", !filters.hasExtras);
+        setFilters("offset", 0);
+        setSelectedIndex(0);
+        break;
       case "section-header":
         setSectionOpen(item.key, (v) => !v);
         break;
@@ -294,6 +303,19 @@ export const FilterPanel: Component = () => {
         }}
       >
         Favorites
+      </div>
+
+      {/* Has Extras toggle */}
+      <div
+        class={`sidebar__section-header${filters.hasExtras ? " sidebar__section-header--active" : ""}${isFocused(2) ? " sidebar__item--focused" : ""}`}
+        data-sidebar-idx={2}
+        onClick={() => {
+          setFilters("hasExtras", !filters.hasExtras);
+          setFilters("offset", 0);
+          setSelectedIndex(0);
+        }}
+      >
+        Has Extras
       </div>
 
       {/* Platform section */}

@@ -13,6 +13,7 @@ pub fn search_games(
     series: &[String],
     platforms: &[String],
     favorites_only: bool,
+    has_extras: bool,
     sort_by: &str,
     sort_dir: &str,
     offset: i64,
@@ -109,6 +110,12 @@ pub fn search_games(
 
     if favorites_only {
         where_clauses.push("g.favorite = 1".to_string());
+    }
+
+    if has_extras {
+        where_clauses.push(
+            "EXISTS (SELECT 1 FROM game_extras WHERE game_id = g.id)".to_string(),
+        );
     }
 
     let where_str = if where_clauses.is_empty() {

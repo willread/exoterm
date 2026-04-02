@@ -55,6 +55,7 @@ export const GameList: Component = () => {
     const _series = filters.series;
     const _plat = filters.platform;
     const _fav = filters.favoritesOnly;
+    const _extras = filters.hasExtras;
     const _sortBy = filters.sortBy;
     const _sortDir = filters.sortDir;
     const _offset = filters.offset;

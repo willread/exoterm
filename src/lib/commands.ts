@@ -17,6 +17,7 @@ export async function searchGames(params: {
   series?: string[];
   platform?: string[];
   favorites_only?: boolean;
+  has_extras?: boolean;
   sort_by?: string;
   sort_dir?: string;
   offset?: number;
