@@ -329,7 +329,7 @@ const App: Component = () => {
         }
       >
         <div style="text-align: center; padding: 1ch;">
-          <div>exoterm v0.1.0</div>
+          <div>eXo Terminal v{__APP_VERSION__}</div>
           <div style="margin-top: 4px;">
             A DOS-style frontend for eXo collections
           </div>

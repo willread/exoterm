@@ -1,8 +1,6 @@
 import { Component, Show, For, onMount, onCleanup, createSignal } from "solid-js";
 import { activeMenu, setActiveMenu, setActiveDialog, theme, setTheme, crtEnabled, setCrtEnabled, fontSize, setFontSize, fetchGames, fetchFilterOptions, setScanning, setScanStatus, refetchCollections, setFilters, setSelectedIndex, setSelectedGameId, setSidebarWidth, setDetailWidth, setSearchQuery } from "../lib/store";
 import { clearAllFavorites, rescanAllCollections } from "../lib/commands";
-
-const APP_VERSION = "__APP_VERSION__";
 import type { Theme } from "../lib/types";
 
 const THEMES: { label: string; value: Theme }[] = [
@@ -214,7 +212,7 @@ export const MenuBar: Component = () => {
         <Show when={activeMenu() === "help"}>
           <div class="dropdown">
             <div class="dropdown__item" onClick={() => { setActiveDialog("about"); closeMenu(); }}>
-              About eXo Terminal v{APP_VERSION}
+              About eXo Terminal
             </div>
           </div>
         </Show>
