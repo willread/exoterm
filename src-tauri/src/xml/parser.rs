@@ -163,9 +163,27 @@ pub fn parse_platform_xml(
                                     ],
                                 );
 
-                                if result.is_ok() {
+                                if let Ok(_) = result {
+                                    let game_id = conn.last_insert_rowid();
                                     count += 1;
                                     batch_count += 1;
+
+                                    // Insert ManualPath as an extra if present and not missing
+                                    let missing = fields.get("MissingManual").map(|v| v == "true").unwrap_or(false);
+                                    if !missing {
+                                        if let Some(manual_path) = fields.get("ManualPath").filter(|p| !p.is_empty()) {
+                                            let kind = extra_kind(manual_path);
+                                            // Derive a display name from the filename
+                                            let name = std::path::Path::new(&manual_path.replace('\\', "/"))
+                                                .file_stem()
+                                                .map(|s| s.to_string_lossy().to_string())
+                                                .unwrap_or_else(|| "Manual".to_string());
+                                            let _ = conn.execute(
+                                                "INSERT INTO game_extras (game_id, name, path, region, kind) VALUES (?1, ?2, ?3, NULL, ?4)",
+                                                rusqlite::params![game_id, name, manual_path, kind],
+                                            );
+                                        }
+                                    }
                                 }
                             }
                         }

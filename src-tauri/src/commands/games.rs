@@ -92,35 +92,41 @@ const IMAGE_CATEGORIES: &[&str] = &[
     "Screenshot - Gameplay",
 ];
 
+/// Sanitize a game title for matching against LaunchBox image filenames.
+/// LaunchBox replaces characters illegal in Windows filenames with `_`.
+fn sanitize_title_for_filename(title: &str) -> String {
+    title
+        .chars()
+        .map(|c| match c {
+            ':' | '?' | '*' | '"' | '<' | '>' | '|' | '/' | '\\' => '_',
+            c => c,
+        })
+        .collect()
+}
+
 #[tauri::command]
 pub fn get_game_images(state: State<AppState>, id: i64) -> Result<Vec<GameImage>, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
 
-    let (app_path, collection_path): (String, String) = db
+    // Images live at Images/{platform}/{category}/{title_sanitized}-NN.ext
+    let (title, platform, collection_path): (String, String, String) = db
         .query_row(
-            "SELECT g.application_path, c.path
+            "SELECT g.title, g.platform, c.path
              FROM games g
              JOIN collections c ON g.collection_id = c.id
              WHERE g.id = ?",
             [id],
-            |row| Ok((row.get(0)?, row.get(1)?)),
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )
         .map_err(|e| e.to_string())?;
     drop(db);
 
-    // Derive game folder from application_path: "eXo\!dos\GameName\GameName.bat" -> "GameName"
-    let path_buf = PathBuf::from(&app_path);
-    let segments: Vec<_> = path_buf.components().collect();
-    let game_folder = if segments.len() >= 3 {
-        segments[segments.len() - 2]
-            .as_os_str()
-            .to_string_lossy()
-            .to_string()
-    } else {
-        return Ok(vec![]);
-    };
+    let sanitized = sanitize_title_for_filename(&title);
+    // Images base: {collection}/Images/{platform}/
+    let images_base = PathBuf::from(&collection_path)
+        .join("Images")
+        .join(&platform);
 
-    let images_base = PathBuf::from(&collection_path).join("Images").join(&game_folder);
     if !images_base.exists() {
         return Ok(vec![]);
     }
@@ -132,32 +138,56 @@ pub fn get_game_images(state: State<AppState>, id: i64) -> Result<Vec<GameImage>
         if !cat_dir.is_dir() {
             continue;
         }
-        // Take the first image file found
-        if let Ok(entries) = std::fs::read_dir(&cat_dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if let Some(ext) = path.extension() {
+
+        // Collect matching files: name must start with "{sanitized}-" (LaunchBox suffix format)
+        let mut candidates: Vec<PathBuf> = std::fs::read_dir(&cat_dir)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| {
+                if let Some(ext) = p.extension() {
                     let ext = ext.to_string_lossy().to_lowercase();
-                    if matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "gif" | "webp") {
-                        if let Ok(data) = std::fs::read(&path) {
-                            use base64::Engine;
-                            let b64 = base64::engine::general_purpose::STANDARD.encode(&data);
-                            let mime = match ext.as_str() {
-                                "jpg" | "jpeg" => "image/jpeg",
-                                "gif" => "image/gif",
-                                "webp" => "image/webp",
-                                _ => "image/png",
-                            };
-                            results.push(GameImage {
-                                category: category.to_string(),
-                                data_url: format!("data:{};base64,{}", mime, b64),
-                            });
-                            break; // one image per category
-                        }
+                    if !matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "gif" | "webp") {
+                        return false;
                     }
+                } else {
+                    return false;
                 }
+                // Filename stem must start with the sanitized title followed by '-'
+                if let Some(stem) = p.file_stem() {
+                    let stem = stem.to_string_lossy();
+                    stem.starts_with(&format!("{}-", sanitized))
+                } else {
+                    false
+                }
+            })
+            .collect();
+
+        // Sort so the lowest-numbered variant (-00, -01 …) comes first
+        candidates.sort();
+
+        if let Some(path) = candidates.first() {
+            if let Ok(data) = std::fs::read(path) {
+                use base64::Engine;
+                let b64 = base64::engine::general_purpose::STANDARD.encode(&data);
+                let ext = path
+                    .extension()
+                    .map(|e| e.to_string_lossy().to_lowercase())
+                    .unwrap_or_default();
+                let mime = match ext.as_str() {
+                    "jpg" | "jpeg" => "image/jpeg",
+                    "gif" => "image/gif",
+                    "webp" => "image/webp",
+                    _ => "image/png",
+                };
+                results.push(GameImage {
+                    category: category.to_string(),
+                    data_url: format!("data:{};base64,{}", mime, b64),
+                });
             }
         }
+
         if results.len() >= 2 {
             break; // box art + one screenshot is enough
         }
