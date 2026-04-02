@@ -184,7 +184,7 @@ pub fn parse_platform_xml(
                     // Buffer the extra — we'll insert after all games are committed
                     // so lb_id lookups are guaranteed to work.
                     if let (Some(game_lb_id), Some(name), Some(path)) = (
-                        addon_fields.get("GameId"),
+                        addon_fields.get("GameID").or_else(|| addon_fields.get("GameId")),
                         addon_fields.get("Name"),
                         addon_fields.get("ApplicationPath"),
                     ) {

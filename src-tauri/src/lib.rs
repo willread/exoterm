@@ -58,7 +58,7 @@ fn initialize_state() -> Result<AppState, String> {
     let conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
 
     // Enable WAL mode for better concurrent access
-    conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;")
+    conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA foreign_keys=ON;")
         .map_err(|e| e.to_string())?;
 
     db::schema::initialize(&conn).map_err(|e| e.to_string())?;
