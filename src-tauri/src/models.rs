@@ -102,6 +102,17 @@ pub struct GameVideo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GameExtra {
+    pub id: i64,
+    pub name: String,
+    /// Absolute filesystem path, resolved at query time
+    pub path: String,
+    pub region: Option<String>,
+    /// "pdf" | "image" | "video" | "audio" | "text" | "other"
+    pub kind: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScanProgress {
     pub current: usize,
     pub total_files: usize,

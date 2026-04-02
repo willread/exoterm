@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use tauri::State;
 
 use crate::db::queries;
-use crate::models::{FilterOptions, Game, GameImage, GameVideo, SearchResult};
+use crate::models::{FilterOptions, Game, GameExtra, GameImage, GameVideo, SearchResult};
 use crate::state::AppState;
 
 #[tauri::command(rename_all = "snake_case")]
@@ -162,6 +162,57 @@ pub fn get_game_images(state: State<AppState>, id: i64) -> Result<Vec<GameImage>
     }
 
     Ok(results)
+}
+
+#[tauri::command]
+pub fn get_game_extras(state: State<AppState>, id: i64) -> Result<Vec<GameExtra>, String> {
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+
+    let collection_path: String = db
+        .query_row(
+            "SELECT c.path FROM games g
+             JOIN collections c ON g.collection_id = c.id
+             WHERE g.id = ?",
+            [id],
+            |r| r.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+
+    let mut stmt = db
+        .prepare(
+            "SELECT id, name, path, region, kind
+             FROM game_extras
+             WHERE game_id = ?
+             ORDER BY kind, name",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let collection_root = PathBuf::from(&collection_path);
+
+    let extras: Vec<GameExtra> = stmt
+        .query_map([id], |row| {
+            Ok(GameExtra {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                path: row.get(2)?,
+                region: row.get(3)?,
+                kind: row.get(4)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .flatten()
+        .map(|e| {
+            // Resolve relative path (Windows backslashes) to absolute
+            let rel = e.path.replace('\\', std::path::MAIN_SEPARATOR_STR);
+            let abs = collection_root.join(&rel);
+            GameExtra {
+                path: abs.to_string_lossy().to_string(),
+                ..e
+            }
+        })
+        .collect();
+
+    Ok(extras)
 }
 
 const VIDEO_EXTENSIONS: &[&str] = &["mp4", "avi", "mkv", "mov", "wmv", "webm", "m4v", "ogv", "flv"];

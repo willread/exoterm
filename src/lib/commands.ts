@@ -62,6 +62,20 @@ export async function getGameVideos(id: number): Promise<GameVideo[]> {
   return invoke("get_game_videos", { id });
 }
 
+export interface GameExtra {
+  id: number;
+  name: string;
+  /** Absolute filesystem path, resolved by the backend */
+  path: string;
+  region: string | null;
+  /** "pdf" | "image" | "video" | "audio" | "text" | "other" */
+  kind: string;
+}
+
+export async function getGameExtras(id: number): Promise<GameExtra[]> {
+  return invoke("get_game_extras", { id });
+}
+
 export async function toggleFavorite(id: number): Promise<boolean> {
   return invoke("toggle_favorite", { id });
 }

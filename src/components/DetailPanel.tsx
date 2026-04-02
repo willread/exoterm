@@ -1,10 +1,23 @@
-import { Component, Show, createResource, createSignal } from "solid-js";
+import { Component, For, Show, createResource, createSignal } from "solid-js";
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { open as openPath } from "@tauri-apps/plugin-opener";
 import { selectedGame, gameList, selectedIndex } from "../lib/store";
-import { getGameImages, getGameVideos, launchGame } from "../lib/commands";
+import { getGameImages, getGameVideos, getGameExtras, launchGame } from "../lib/commands";
 import { guardedLaunch } from "../lib/keyboard";
-import type { GameImage } from "../lib/commands";
+import type { GameExtra, GameImage } from "../lib/commands";
 import { VideoPlayer } from "./VideoPlayer";
+
+/** ASCII glyph representing the kind of an extra file. */
+function extraKindGlyph(kind: string): string {
+  switch (kind) {
+    case "pdf":   return "[PDF]";
+    case "image": return "[IMG]";
+    case "video": return "[VID]";
+    case "audio": return "[SND]";
+    case "text":  return "[TXT]";
+    default:      return "[???]";
+  }
+}
 
 /** Quantize each RGB channel to 6-bit precision (VGA DAC), giving a 256-color-era look. */
 function applyVgaQuantize(img: HTMLImageElement): string {
@@ -52,6 +65,7 @@ export const DetailPanel: Component = () => {
   const game = () => selectedGame();
   const [quantize, setQuantize] = createSignal(true);
   const [videoIndex, setVideoIndex] = createSignal(0);
+  const [extrasOpen, setExtrasOpen] = createSignal(true);
 
   const [images] = createResource(
     () => game()?.id,
@@ -64,8 +78,12 @@ export const DetailPanel: Component = () => {
       if (!id) return [];
       const raw = await getGameVideos(id);
       return raw.map((v) => ({ ...v, src: convertFileSrc(v.path) }));
-      // v.source ("bat" | "dir") passes through via spread
     }
+  );
+
+  const [extras] = createResource(
+    () => game()?.id,
+    (id) => (id ? getGameExtras(id) : Promise.resolve([] as GameExtra[]))
   );
 
   // Reset video index when game changes
@@ -211,6 +229,43 @@ export const DetailPanel: Component = () => {
                 <div class="detail-panel__overview">{g().overview}</div>
               </Show>
             </div>
+
+            {/* Extras — manuals, maps, magazines, etc. */}
+            <Show when={extras() && extras()!.length > 0}>
+              <div class="detail-panel__extras">
+                <div
+                  class="detail-panel__extras-header"
+                  onClick={() => setExtrasOpen(!extrasOpen())}
+                >
+                  {extrasOpen() ? "\u25BC" : "\u25BA"} Extras ({extras()!.length})
+                </div>
+                <Show when={extrasOpen()}>
+                  <div class="detail-panel__extras-list">
+                    <For each={extras()}>
+                      {(extra) => (
+                        <div
+                          class="detail-panel__extra-item"
+                          onClick={() => openPath(extra.path).catch(console.error)}
+                          title={extra.path}
+                        >
+                          <span class="detail-panel__extra-kind">
+                            {extraKindGlyph(extra.kind)}
+                          </span>
+                          <span class="detail-panel__extra-name">
+                            {extra.name}
+                          </span>
+                          <Show when={extra.region}>
+                            <span class="detail-panel__extra-region">
+                              {extra.region}
+                            </span>
+                          </Show>
+                        </div>
+                      )}
+                    </For>
+                  </div>
+                </Show>
+              </div>
+            </Show>
 
             {/* Play button pinned to bottom */}
             <div class="detail-panel__play-wrap">
