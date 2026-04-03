@@ -493,7 +493,9 @@ mod tests {
             )
             .unwrap();
 
-        assert_eq!(fav, 1, "Doom should be a favorite");
+        // Favorites are always 0 on import — completely decoupled from LaunchBox XML.
+        // The <Favorite>true</Favorite> flag in the XML is intentionally ignored.
+        assert_eq!(fav, 0, "Favorites must never be imported from LaunchBox XML");
         assert_eq!(release_year, Some(1993));
         assert_eq!(genre.as_deref(), Some("Action"));
         assert_eq!(developer.as_deref(), Some("id Software"));

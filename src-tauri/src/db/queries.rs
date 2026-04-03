@@ -83,15 +83,12 @@ pub fn search_games(
     }
 
     if !series.is_empty() {
-        if series.len() == 1 {
-            where_clauses.push("g.series = ?".to_string());
-            params_vec.push(Box::new(series[0].clone()));
-        } else {
-            let placeholders = series.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
-            where_clauses.push(format!("g.series IN ({})", placeholders));
-            for s in series {
-                params_vec.push(Box::new(s.clone()));
-            }
+        // Series cells may contain multiple semicolon-separated values (e.g.
+        // "King's Quest; Space Quest"), so use LIKE for substring matching.
+        let clauses: Vec<String> = series.iter().map(|_| "g.series LIKE ?".to_string()).collect();
+        where_clauses.push(format!("({})", clauses.join(" OR ")));
+        for s in series {
+            params_vec.push(Box::new(format!("%{}%", s)));
         }
     }
 
@@ -274,7 +271,9 @@ fn build_option_filter(
         }
     }
     if !series.is_empty() && exclude != "series" {
-        clauses.push(format!("series = '{}'", series.replace('\'', "''")));
+        // Series cells may be multi-valued ("King's Quest; Space Quest"),
+        // so match by substring, consistent with search_games.
+        clauses.push(format!("series LIKE '%{}%'", series.replace('\'', "''")));
     }
     if !platform.is_empty() && exclude != "platform" {
         clauses.push(format!(
@@ -294,27 +293,70 @@ fn build_option_filter(
 }
 
 /// Fetch distinct values for a column, filtered by a WHERE clause.
+///
+/// For `genre` and `series` columns, each row may contain multiple
+/// semicolon-separated values (e.g. "Action; Adventure; Puzzle"). This
+/// function splits those raw cells, deduplicates, and returns individual
+/// values sorted alphabetically, so the sidebar shows "Action", "Adventure",
+/// and "Puzzle" as separate filter options instead of the compound string.
+///
+/// All other columns use a plain `SELECT DISTINCT` — values are returned as-is.
 fn get_distinct_values(
     conn: &Connection,
     column: &str,
     where_clause: &str,
 ) -> rusqlite::Result<Vec<String>> {
-    let sql = if where_clause.is_empty() {
-        format!(
-            "SELECT DISTINCT {} FROM games WHERE {} IS NOT NULL AND {} != '' ORDER BY {}",
-            column, column, column, column
-        )
+    let is_multi_value = matches!(column, "genre" | "series");
+
+    if is_multi_value {
+        // Fetch every non-null, non-empty raw cell (DISTINCT not needed; we
+        // deduplicate in Rust after splitting on ';').
+        let sql = if where_clause.is_empty() {
+            format!(
+                "SELECT {} FROM games WHERE {} IS NOT NULL AND {} != ''",
+                column, column, column
+            )
+        } else {
+            format!(
+                "SELECT {} FROM games {} AND {} IS NOT NULL AND {} != ''",
+                column, where_clause, column, column
+            )
+        };
+        let mut stmt = conn.prepare(&sql)?;
+        let raw: Vec<String> = stmt
+            .query_map([], |row| row.get::<_, String>(0))?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+
+        let mut seen = std::collections::HashSet::new();
+        let mut result: Vec<String> = Vec::new();
+        for cell in raw {
+            for part in cell.split(';') {
+                let trimmed = part.trim().to_string();
+                if !trimmed.is_empty() && seen.insert(trimmed.clone()) {
+                    result.push(trimmed);
+                }
+            }
+        }
+        result.sort();
+        Ok(result)
     } else {
-        format!(
-            "SELECT DISTINCT {} FROM games {} AND {} IS NOT NULL AND {} != '' ORDER BY {}",
-            column, where_clause, column, column, column
-        )
-    };
-    let mut stmt = conn.prepare(&sql)?;
-    let values = stmt
-        .query_map([], |row| row.get::<_, String>(0))?
-        .collect::<rusqlite::Result<Vec<_>>>()?;
-    Ok(values)
+        let sql = if where_clause.is_empty() {
+            format!(
+                "SELECT DISTINCT {} FROM games WHERE {} IS NOT NULL AND {} != '' ORDER BY {}",
+                column, column, column, column
+            )
+        } else {
+            format!(
+                "SELECT DISTINCT {} FROM games {} AND {} IS NOT NULL AND {} != '' ORDER BY {}",
+                column, where_clause, column, column, column
+            )
+        };
+        let mut stmt = conn.prepare(&sql)?;
+        let values = stmt
+            .query_map([], |row| row.get::<_, String>(0))?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        Ok(values)
+    }
 }
 
 /// Return available filter options. Each category is filtered by all OTHER active
