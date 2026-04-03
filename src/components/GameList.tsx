@@ -90,6 +90,14 @@ export const GameList: Component = () => {
     }
   });
 
+  // Scroll the selected row to the very top of the viewport (used by random).
+  (window as any).__scrollSelectedToTop = () => {
+    if (!listRef) return;
+    const rowTop = selectedIndex() * rowHeight();
+    listRef.scrollTop = rowTop;
+    setScrollTop(rowTop);
+  };
+
   const handleSort = (col: string) => {
     // batch() ensures all store mutations happen atomically — the reactive
     // effect fires exactly ONCE with all updated values, so only one fetch

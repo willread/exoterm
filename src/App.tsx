@@ -286,6 +286,8 @@ const App: Component = () => {
         if (count > 0) {
           setSelectedIndex(Math.floor(Math.random() * count));
           setActivePanel("list");
+          // Place the selected row at the top of the viewport.
+          (window as any).__scrollSelectedToTop?.();
         }
       },
     });
