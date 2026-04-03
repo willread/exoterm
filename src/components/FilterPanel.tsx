@@ -279,13 +279,22 @@ export const FilterPanel: Component = () => {
     if (sidebarIndex() > max) setSidebarIndex(Math.max(0, max));
   });
 
-  // Scroll focused item into view
+  // Scroll focused item into view using manual scrollTop
   let sidebarRef: HTMLDivElement | undefined;
   createEffect(() => {
     if (activePanel() !== "sidebar") return;
     const idx = sidebarIndex();
     const el = sidebarRef?.querySelector(`[data-sidebar-idx="${idx}"]`) as HTMLElement | null;
-    el?.scrollIntoView({ block: "nearest" });
+    if (!el || !sidebarRef) return;
+    const elTop = el.offsetTop;
+    const elBottom = elTop + el.offsetHeight;
+    const viewTop = sidebarRef.scrollTop;
+    const viewBottom = viewTop + sidebarRef.clientHeight;
+    if (elTop < viewTop) {
+      sidebarRef.scrollTop = elTop;
+    } else if (elBottom > viewBottom) {
+      sidebarRef.scrollTop = elBottom - sidebarRef.clientHeight;
+    }
   });
 
   // Execute action for the current nav item

@@ -37,7 +37,7 @@ import {
   restorePersistedState,
 } from "./lib/store";
 import { loadState, saveStateDebounced } from "./lib/persist";
-import { initKeyboardHandler, registerKey, guardedLaunch } from "./lib/keyboard";
+import { initKeyboardHandler, registerKey, clearBindings, guardedLaunch } from "./lib/keyboard";
 import { launchGame, toggleFavorite, rescanAllCollections } from "./lib/commands";
 import { ResizeHandle } from "./components/ResizeHandle";
 
@@ -92,7 +92,8 @@ const App: Component = () => {
       }
     }, 100);
 
-    // Initialize keyboard handler
+    // Initialize keyboard handler (guard against HMR double-mount)
+    clearBindings();
     initKeyboardHandler();
 
     // Register global hotkeys
@@ -284,10 +285,11 @@ const App: Component = () => {
       handler: () => {
         const count = gameList().length;
         if (count > 0) {
-          // Set flag BEFORE changing index so the scroll effect places row at top.
-          (window as any).__scrollSelectedToTop?.();
-          setSelectedIndex(Math.floor(Math.random() * count));
+          const idx = Math.floor(Math.random() * count);
+          setSelectedIndex(idx);
           setActivePanel("list");
+          // Override auto-scroll after effects settle — place row at top.
+          queueMicrotask(() => (window as any).__scrollToRow?.(idx));
         }
       },
     });
