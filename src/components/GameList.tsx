@@ -76,7 +76,8 @@ export const GameList: Component = () => {
 
   // Auto-scroll to keep selected row visible; also sync scrollTop signal so
   // the virtual window stays correct after keyboard navigation.
-  // When scrollToTop is set, the row is placed at the top of the viewport.
+  // When scrollToTop is set, the row is placed at the top of the viewport
+  // and a rAF backup ensures the position survives browser layout.
   createEffect(() => {
     const idx = selectedIndex();
     if (listRef) {
@@ -85,6 +86,12 @@ export const GameList: Component = () => {
         scrollToTop = false;
         listRef.scrollTop = rowTop;
         setScrollTop(rowTop);
+        // Re-apply after browser layout in case onScroll clobbers it.
+        const ref = listRef;
+        requestAnimationFrame(() => {
+          ref.scrollTop = rowTop;
+          setScrollTop(rowTop);
+        });
       } else if (rowTop < listRef.scrollTop) {
         listRef.scrollTop = rowTop;
         setScrollTop(rowTop);

@@ -367,8 +367,8 @@ body {
 }
 
 .sidebar__item--focused {
-  outline: 1px solid var(--fg-primary);
-  outline-offset: -1px;
+  background: var(--bg-highlight);
+  color: var(--fg-highlight);
 }
 
 
