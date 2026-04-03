@@ -284,10 +284,10 @@ const App: Component = () => {
       handler: () => {
         const count = gameList().length;
         if (count > 0) {
+          // Set flag BEFORE changing index so the scroll effect places row at top.
+          (window as any).__scrollSelectedToTop?.();
           setSelectedIndex(Math.floor(Math.random() * count));
           setActivePanel("list");
-          // Place the selected row at the top of the viewport.
-          (window as any).__scrollSelectedToTop?.();
         }
       },
     });

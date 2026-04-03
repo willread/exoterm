@@ -18,6 +18,7 @@ const OVERSCAN = 20;
 
 export const GameList: Component = () => {
   let listRef: HTMLDivElement | undefined;
+  let scrollToTop = false; // flag: next scroll should place row at top
 
   const [scrollTop, setScrollTop] = createSignal(0);
 
@@ -75,11 +76,16 @@ export const GameList: Component = () => {
 
   // Auto-scroll to keep selected row visible; also sync scrollTop signal so
   // the virtual window stays correct after keyboard navigation.
+  // When scrollToTop is set, the row is placed at the top of the viewport.
   createEffect(() => {
     const idx = selectedIndex();
     if (listRef) {
       const rowTop = idx * rowHeight();
-      if (rowTop < listRef.scrollTop) {
+      if (scrollToTop) {
+        scrollToTop = false;
+        listRef.scrollTop = rowTop;
+        setScrollTop(rowTop);
+      } else if (rowTop < listRef.scrollTop) {
         listRef.scrollTop = rowTop;
         setScrollTop(rowTop);
       } else if (rowTop + rowHeight() > listRef.scrollTop + listRef.clientHeight) {
@@ -90,13 +96,8 @@ export const GameList: Component = () => {
     }
   });
 
-  // Scroll the selected row to the very top of the viewport (used by random).
-  (window as any).__scrollSelectedToTop = () => {
-    if (!listRef) return;
-    const rowTop = selectedIndex() * rowHeight();
-    listRef.scrollTop = rowTop;
-    setScrollTop(rowTop);
-  };
+  // Tell the next selectedIndex change to scroll the row to the top.
+  (window as any).__scrollSelectedToTop = () => { scrollToTop = true; };
 
   const handleSort = (col: string) => {
     // batch() ensures all store mutations happen atomically — the reactive
