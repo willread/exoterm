@@ -155,8 +155,8 @@ describe("GameList rows", () => {
     await Promise.resolve();
     // Exclude the header row — its fav cell contains "*" not a star.
     const favCols = document.querySelectorAll(".game-list__row:not(.game-list__row--header) .game-list__col--fav");
-    // Row 0 (Doom) is favorited → ★; row 1 (Quake) is not → empty.
-    expect(favCols[0].textContent).toBe("★");
+    // Row 0 (Doom) is favorited → *; row 1 (Quake) is not → empty.
+    expect(favCols[0].textContent).toBe("*");
     expect(favCols[1].textContent).toBe("");
   });
 });

@@ -304,7 +304,7 @@ export const DetailPanel: Component = () => {
               <div class="detail-panel__field">
                 <span class="detail-panel__label">Favorite:</span>
                 <span class="detail-panel__value">
-                  {g().favorite ? "\u2605 Yes" : "No"}
+                  {g().favorite ? "* Yes" : "No"}
                 </span>
               </div>
 
