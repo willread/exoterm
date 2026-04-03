@@ -53,22 +53,42 @@ export const MenuBar: Component = () => {
   };
 
   const [focusedItemIndex, setFocusedItemIndex] = createSignal(-1);
+  const [submenuActive, setSubmenuActive] = createSignal(false);
+  const [focusedSubmenuIndex, setFocusedSubmenuIndex] = createSignal(-1);
 
-  // Return the navigable items in the currently open top-level dropdown.
-  // Excludes separators and submenu-trigger items (e.g. Theme).
+  // Return ALL navigable items in the currently open top-level dropdown,
+  // including submenu triggers (e.g. Theme).
   const getDropdownItems = (): HTMLElement[] => {
     if (!menuBarRef) return [];
     return Array.from(
       menuBarRef.querySelectorAll<HTMLElement>(
-        ".dropdown:not(.dropdown--submenu) > .dropdown__item:not(.dropdown__item--submenu)"
+        ".dropdown:not(.dropdown--submenu) > .dropdown__item"
       )
     );
   };
 
-  // Sync the --focused CSS class to DOM items whenever the index changes.
+  // Return items inside the open submenu.
+  const getSubmenuItems = (): HTMLElement[] => {
+    if (!menuBarRef) return [];
+    return Array.from(
+      menuBarRef.querySelectorAll<HTMLElement>(
+        ".dropdown--submenu > .dropdown__item"
+      )
+    );
+  };
+
+  // Sync the --focused CSS class to parent dropdown items.
   createEffect(() => {
     const idx = focusedItemIndex();
     getDropdownItems().forEach((el, i) =>
+      el.classList.toggle("dropdown__item--focused", i === idx)
+    );
+  });
+
+  // Sync the --focused CSS class to submenu items.
+  createEffect(() => {
+    const idx = focusedSubmenuIndex();
+    getSubmenuItems().forEach((el, i) =>
       el.classList.toggle("dropdown__item--focused", i === idx)
     );
   });
@@ -77,6 +97,8 @@ export const MenuBar: Component = () => {
   createEffect(() => {
     activeMenu(); // reactive dependency
     setFocusedItemIndex(-1);
+    setSubmenuActive(false);
+    setFocusedSubmenuIndex(-1);
   });
 
   const toggleMenu = (menu: string) => {
@@ -95,8 +117,24 @@ export const MenuBar: Component = () => {
     }
   };
 
+  // Open the submenu from the parent dropdown (keyboard).
+  const enterSubmenu = () => {
+    setThemeSubmenuOpen(true);
+    setSubmenuActive(true);
+    setFocusedSubmenuIndex(0);
+  };
+
+  // Return from submenu back to the parent dropdown (keyboard).
+  const exitSubmenu = () => {
+    setSubmenuActive(false);
+    setFocusedSubmenuIndex(-1);
+    setThemeSubmenuOpen(false);
+    // focusedItemIndex stays on "Theme" so user returns there
+  };
+
   // Keyboard navigation for open dropdown menus.
   // Up/Down move the cursor, Enter activates, Left/Right switch menus.
+  // When a submenu is active, keys navigate within it; Escape/Left returns.
   // Alt+letter opens the matching menu (works even when no menu is open).
   // Escape is already handled globally in App.tsx.
   const handleMenuKeyDown = (e: KeyboardEvent) => {
@@ -116,14 +154,61 @@ export const MenuBar: Component = () => {
 
     if (!activeMenu()) return;
 
-    // Left/Right switch to the adjacent top-level menu.
-    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+    // ── Submenu-active branch ──────────────────────────────────────────
+    if (submenuActive()) {
+      const subItems = getSubmenuItems();
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        setFocusedSubmenuIndex((i) => Math.min(i + 1, subItems.length - 1));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        setFocusedSubmenuIndex((i) => (i <= 0 ? 0 : i - 1));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        const idx = focusedSubmenuIndex();
+        if (idx >= 0 && idx < subItems.length) {
+          subItems[idx].click();
+        }
+      } else if (e.key === "Escape" || e.key === "ArrowLeft") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        exitSubmenu();
+      }
+      return;
+    }
+
+    // ── Parent dropdown branch ─────────────────────────────────────────
+
+    // ArrowRight: if focused item is a submenu trigger, open submenu instead
+    // of switching menus.
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      const items = getDropdownItems();
+      const idx = focusedItemIndex();
+      if (idx >= 0 && items[idx]?.classList.contains("dropdown__item--submenu")) {
+        enterSubmenu();
+        return;
+      }
+      // Otherwise switch to next top-level menu.
+      const currentIdx = (MENU_ORDER as readonly string[]).indexOf(activeMenu()!);
+      if (currentIdx !== -1) {
+        const nextIdx = (currentIdx + 1) % MENU_ORDER.length;
+        setActiveMenu(MENU_ORDER[nextIdx]);
+        setThemeSubmenuOpen(false);
+      }
+      return;
+    }
+
+    if (e.key === "ArrowLeft") {
       e.preventDefault();
       e.stopImmediatePropagation();
       const currentIdx = (MENU_ORDER as readonly string[]).indexOf(activeMenu()!);
       if (currentIdx !== -1) {
-        const dir = e.key === "ArrowRight" ? 1 : -1;
-        const nextIdx = (currentIdx + dir + MENU_ORDER.length) % MENU_ORDER.length;
+        const nextIdx = (currentIdx - 1 + MENU_ORDER.length) % MENU_ORDER.length;
         setActiveMenu(MENU_ORDER[nextIdx]);
         setThemeSubmenuOpen(false);
       }
@@ -146,7 +231,12 @@ export const MenuBar: Component = () => {
       e.stopImmediatePropagation();
       const idx = focusedItemIndex();
       if (idx >= 0 && idx < items.length) {
-        items[idx].click();
+        // If the focused item is a submenu trigger, open the submenu
+        if (items[idx].classList.contains("dropdown__item--submenu")) {
+          enterSubmenu();
+        } else {
+          items[idx].click();
+        }
       }
     }
   };
@@ -246,7 +336,7 @@ export const MenuBar: Component = () => {
             <div
               class="dropdown__item dropdown__item--submenu"
               onMouseEnter={() => setThemeSubmenuOpen(true)}
-              onMouseLeave={() => setThemeSubmenuOpen(false)}
+              onMouseLeave={() => { if (!submenuActive()) setThemeSubmenuOpen(false); }}
             >
               {"Theme"}
               <Show when={themeSubmenuOpen()}>

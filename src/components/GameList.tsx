@@ -132,7 +132,7 @@ export const GameList: Component = () => {
             the exact same layout width as every data row — perfect alignment
             is structurally guaranteed, no measurement tricks needed. */}
         <div class="game-list__row game-list__row--header no-select">
-          <div class="game-list__col game-list__col--fav" title="Favorite">*</div>
+          <div class="game-list__col game-list__col--fav" title="Favorite">{"\u2605"}</div>
           <div class="game-list__col game-list__col--title" onClick={() => handleSort("title")}>
             Title{sortIndicator("title")}
           </div>

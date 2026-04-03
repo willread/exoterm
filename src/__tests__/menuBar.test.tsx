@@ -334,7 +334,7 @@ describe("MenuBar dropdown keyboard navigation", () => {
     fireKey("ArrowDown");
     const items = Array.from(
       document.querySelectorAll<HTMLElement>(
-        ".dropdown:not(.dropdown--submenu) > .dropdown__item:not(.dropdown__item--submenu)"
+        ".dropdown:not(.dropdown--submenu) > .dropdown__item"
       )
     );
     expect(items[0].classList.contains("dropdown__item--focused")).toBe(true);
@@ -348,7 +348,7 @@ describe("MenuBar dropdown keyboard navigation", () => {
     fireKey("ArrowDown");
     const items = Array.from(
       document.querySelectorAll<HTMLElement>(
-        ".dropdown:not(.dropdown--submenu) > .dropdown__item:not(.dropdown__item--submenu)"
+        ".dropdown:not(.dropdown--submenu) > .dropdown__item"
       )
     );
     expect(items[0].classList.contains("dropdown__item--focused")).toBe(false);
@@ -361,7 +361,7 @@ describe("MenuBar dropdown keyboard navigation", () => {
     fireKey("ArrowUp"); // already at -1, clamp to 0
     const items = Array.from(
       document.querySelectorAll<HTMLElement>(
-        ".dropdown:not(.dropdown--submenu) > .dropdown__item:not(.dropdown__item--submenu)"
+        ".dropdown:not(.dropdown--submenu) > .dropdown__item"
       )
     );
     // Focus should be on first item (clamped)
@@ -373,7 +373,7 @@ describe("MenuBar dropdown keyboard navigation", () => {
     openFileMenu();
     const items = Array.from(
       document.querySelectorAll<HTMLElement>(
-        ".dropdown:not(.dropdown--submenu) > .dropdown__item:not(.dropdown__item--submenu)"
+        ".dropdown:not(.dropdown--submenu) > .dropdown__item"
       )
     );
     // Press down more times than there are items
@@ -508,5 +508,191 @@ describe("MenuBar Alt+key shortcuts", () => {
     expect(activeMenu()).toBeNull();
     fireAltKey("o");
     expect(activeMenu()).toBe("options");
+  });
+});
+
+// ── Submenu keyboard navigation ─────────────────────────────────────────────
+
+describe("MenuBar submenu keyboard navigation", () => {
+  function openOptionsMenu() {
+    const optItem = Array.from(document.querySelectorAll(".menu-bar__item")).find((i) =>
+      i.textContent?.includes("ptions")
+    ) as HTMLElement;
+    optItem.click();
+  }
+
+  function fireKey(key: string) {
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, capture: true } as any)
+    );
+  }
+
+  it("ArrowDown reaches the Theme submenu trigger in Options menu", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    openOptionsMenu();
+    fireKey("ArrowDown"); // index 0 = Theme
+    const items = Array.from(
+      document.querySelectorAll<HTMLElement>(".dropdown:not(.dropdown--submenu) > .dropdown__item")
+    );
+    expect(items[0].classList.contains("dropdown__item--focused")).toBe(true);
+    expect(items[0].classList.contains("dropdown__item--submenu")).toBe(true);
+  });
+
+  it("ArrowDown traverses past Theme to CRT Effects", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    openOptionsMenu();
+    fireKey("ArrowDown"); // Theme
+    fireKey("ArrowDown"); // CRT Effects
+    const items = Array.from(
+      document.querySelectorAll<HTMLElement>(".dropdown:not(.dropdown--submenu) > .dropdown__item")
+    );
+    expect(items[0].classList.contains("dropdown__item--focused")).toBe(false);
+    expect(items[1].classList.contains("dropdown__item--focused")).toBe(true);
+    expect(items[1].textContent).toContain("CRT Effects");
+  });
+
+  it("Enter on Theme opens the submenu and focuses first theme item", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    openOptionsMenu();
+    fireKey("ArrowDown"); // Theme
+    fireKey("Enter");
+    const submenu = document.querySelector(".dropdown--submenu");
+    expect(submenu).not.toBeNull();
+    const subItems = submenu!.querySelectorAll(".dropdown__item");
+    expect(subItems[0].classList.contains("dropdown__item--focused")).toBe(true);
+    expect(subItems[0].textContent).toContain("Big Blue");
+  });
+
+  it("ArrowRight on Theme opens the submenu", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    openOptionsMenu();
+    fireKey("ArrowDown"); // Theme
+    fireKey("ArrowRight");
+    const submenu = document.querySelector(".dropdown--submenu");
+    expect(submenu).not.toBeNull();
+    const subItems = submenu!.querySelectorAll(".dropdown__item");
+    expect(subItems[0].classList.contains("dropdown__item--focused")).toBe(true);
+  });
+
+  it("ArrowDown navigates within the open submenu", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    openOptionsMenu();
+    fireKey("ArrowDown"); // Theme
+    fireKey("Enter"); // open submenu, focus index 0
+    fireKey("ArrowDown"); // submenu index 1
+    const subItems = document.querySelectorAll<HTMLElement>(".dropdown--submenu > .dropdown__item");
+    expect(subItems[0].classList.contains("dropdown__item--focused")).toBe(false);
+    expect(subItems[1].classList.contains("dropdown__item--focused")).toBe(true);
+    expect(subItems[1].textContent).toContain("Black & White");
+  });
+
+  it("ArrowUp navigates within the open submenu", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    openOptionsMenu();
+    fireKey("ArrowDown"); // Theme
+    fireKey("Enter"); // submenu index 0
+    fireKey("ArrowDown"); // submenu index 1
+    fireKey("ArrowDown"); // submenu index 2
+    fireKey("ArrowUp"); // back to submenu index 1
+    const subItems = document.querySelectorAll<HTMLElement>(".dropdown--submenu > .dropdown__item");
+    expect(subItems[1].classList.contains("dropdown__item--focused")).toBe(true);
+  });
+
+  it("ArrowDown does not go past the last submenu item", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    openOptionsMenu();
+    fireKey("ArrowDown"); // Theme
+    fireKey("Enter"); // open submenu
+    for (let i = 0; i < 20; i++) fireKey("ArrowDown"); // way past end
+    const subItems = document.querySelectorAll<HTMLElement>(".dropdown--submenu > .dropdown__item");
+    expect(subItems[subItems.length - 1].classList.contains("dropdown__item--focused")).toBe(true);
+  });
+
+  it("ArrowUp does not go above the first submenu item", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    openOptionsMenu();
+    fireKey("ArrowDown"); // Theme
+    fireKey("Enter"); // submenu index 0
+    fireKey("ArrowUp"); // should stay at 0
+    const subItems = document.querySelectorAll<HTMLElement>(".dropdown--submenu > .dropdown__item");
+    expect(subItems[0].classList.contains("dropdown__item--focused")).toBe(true);
+  });
+
+  it("Enter on a submenu item selects the theme and closes the menu", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    openOptionsMenu();
+    fireKey("ArrowDown"); // Theme
+    fireKey("Enter"); // open submenu, index 0
+    // Navigate to "Windows 95" (index 4)
+    fireKey("ArrowDown"); // 1
+    fireKey("ArrowDown"); // 2
+    fireKey("ArrowDown"); // 3
+    fireKey("ArrowDown"); // 4
+    fireKey("Enter");
+    expect(theme()).toBe("win95");
+    expect(activeMenu()).toBeNull();
+  });
+
+  it("Escape in submenu returns to parent with Theme still focused", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    openOptionsMenu();
+    fireKey("ArrowDown"); // Theme
+    fireKey("Enter"); // open submenu
+    fireKey("Escape"); // return to parent
+    // Submenu should be gone
+    expect(document.querySelector(".dropdown--submenu")).toBeNull();
+    // Options menu still open
+    expect(activeMenu()).toBe("options");
+    // Theme item should still be focused in parent
+    const items = Array.from(
+      document.querySelectorAll<HTMLElement>(".dropdown:not(.dropdown--submenu) > .dropdown__item")
+    );
+    expect(items[0].classList.contains("dropdown__item--focused")).toBe(true);
+    expect(items[0].textContent).toContain("Theme");
+  });
+
+  it("ArrowLeft in submenu returns to parent", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    openOptionsMenu();
+    fireKey("ArrowDown"); // Theme
+    fireKey("ArrowRight"); // open submenu
+    fireKey("ArrowLeft"); // return to parent
+    expect(document.querySelector(".dropdown--submenu")).toBeNull();
+    expect(activeMenu()).toBe("options");
+    const items = Array.from(
+      document.querySelectorAll<HTMLElement>(".dropdown:not(.dropdown--submenu) > .dropdown__item")
+    );
+    expect(items[0].classList.contains("dropdown__item--focused")).toBe(true);
+  });
+
+  it("after returning from submenu, ArrowDown continues in parent", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    openOptionsMenu();
+    fireKey("ArrowDown"); // Theme (index 0)
+    fireKey("Enter"); // open submenu
+    fireKey("Escape"); // return to parent, still on Theme (index 0)
+    fireKey("ArrowDown"); // CRT Effects (index 1)
+    const items = Array.from(
+      document.querySelectorAll<HTMLElement>(".dropdown:not(.dropdown--submenu) > .dropdown__item")
+    );
+    expect(items[1].classList.contains("dropdown__item--focused")).toBe(true);
+    expect(items[1].textContent).toContain("CRT Effects");
+  });
+
+  it("ArrowRight on a non-submenu item still switches menus", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    openOptionsMenu();
+    fireKey("ArrowDown"); // Theme
+    fireKey("ArrowDown"); // CRT Effects
+    fireKey("ArrowRight"); // switch to next menu (Tools)
+    expect(activeMenu()).toBe("tools");
+  });
+
+  it("ArrowLeft on a parent item still switches menus", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    openOptionsMenu();
+    fireKey("ArrowDown"); // Theme
+    fireKey("ArrowLeft"); // switch to previous menu (File)
+    expect(activeMenu()).toBe("file");
   });
 });

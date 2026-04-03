@@ -775,7 +775,7 @@ describe("FilterPanel section auto-select and clear on toggle", () => {
     expect(filters.genre).toBe("RPG");
   });
 
-  it("collapsing an open section clears its filter", () => {
+  it("collapsing an open section keeps its filter", () => {
     setFilters("platform", "Windows 3.x");
     populateFilterOptions();
     dispose = render(() => <FilterPanel />, document.body);
@@ -786,21 +786,28 @@ describe("FilterPanel section auto-select and clear on toggle", () => {
     ) as HTMLElement;
     platformHeader.click();
 
-    expect(filters.platform).toBe("");
+    expect(filters.platform).toBe("Windows 3.x");
   });
 
-  it("collapsing a section that was just opened clears the auto-selected filter", () => {
+  it("collapsed section header shows the selected value", () => {
     populateFilterOptions();
     dispose = render(() => <FilterPanel />, document.body);
 
+    // Open genre → auto-selects "Action"
     const genreHeader = Array.from(document.querySelectorAll(".sidebar__section-header")).find(
       (h) => h.textContent?.includes("Genre")
     ) as HTMLElement;
-    genreHeader.click(); // open → auto-selects "Action"
+    genreHeader.click();
     expect(filters.genre).toBe("Action");
 
-    genreHeader.click(); // collapse → clears
-    expect(filters.genre).toBe("");
+    // Collapse — filter stays, header still shows the selection
+    genreHeader.click();
+    expect(filters.genre).toBe("Action");
+    // Re-query the header (DOM may have re-rendered)
+    const collapsedHeader = Array.from(document.querySelectorAll(".sidebar__section-header")).find(
+      (h) => h.textContent?.includes("Genre")
+    );
+    expect(collapsedHeader?.textContent).toContain("Action");
   });
 
   it("opening a year section auto-selects the first year", () => {

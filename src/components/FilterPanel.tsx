@@ -116,7 +116,7 @@ export const FilterPanel: Component = () => {
   };
 
   // When a section is opened: auto-select its first item (if nothing is already selected).
-  // When a section is closed: clear the filter for that section.
+  // When collapsed the filter stays in place so the header keeps showing the selection.
   const toggleSection = (key: SectionKey) => {
     const opening = !sectionOpen[key];
     setSectionOpen(key, opening);
@@ -166,18 +166,6 @@ export const FilterPanel: Component = () => {
           }
           break;
       }
-    } else {
-      // Clear the filter when the section is collapsed
-      switch (key) {
-        case "platform":   setFilters("platform", ""); break;
-        case "genre":      setFilters("genre", ""); break;
-        case "year":       setFilters("year", null); break;
-        case "developer":  setFilters("developer", ""); break;
-        case "publisher":  setFilters("publisher", ""); break;
-        case "series":     setFilters("series", ""); break;
-      }
-      setFilters("offset", 0);
-      setSelectedIndex(0);
     }
   };
 
