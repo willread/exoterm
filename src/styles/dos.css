@@ -454,10 +454,10 @@ body {
 }
 
 .game-list__col--title { flex: 3; min-width: 0; }
-.game-list__col--year { width: 6ch; min-width: 0; flex-shrink: 1; }
+.game-list__col--year { width: 7ch; min-width: 0; flex-shrink: 1; }
 .game-list__col--developer { flex: 2; min-width: 0; }
 .game-list__col--genre { flex: 2; min-width: 0; }
-.game-list__col--fav { width: 2ch; min-width: 0; text-align: center; flex-shrink: 1; color: var(--fg-favorite); }
+.game-list__col--fav { width: 3ch; min-width: 0; text-align: center; flex-shrink: 0; color: var(--fg-favorite); }
 
 /* ── Virtual scroll containers ───────────────── */
 .game-list__virtual-spacer {
