@@ -91,12 +91,17 @@ body {
 }
 
 .menu-bar__title {
-  flex: 1;
+  /* Stretch across the full bar width so the text is centered on the
+     entire window, not just the space between menu items and controls. */
+  position: absolute;
+  left: 0;
+  right: 0;
   text-align: center;
   color: var(--fg-menu);
-  /* Title area is the main drag region for the custom titlebar */
-  -webkit-app-region: drag;
-  app-region: drag;
+  /* Sit behind menu items and controls (z-index 0 < menu-bar z-index 100).
+     pointer-events: none lets clicks fall through to the drag region. */
+  z-index: 0;
+  pointer-events: none;
 }
 
 /* ── Window Controls (custom titlebar) ───────── */
@@ -154,7 +159,8 @@ body {
 }
 
 .dropdown__item:hover,
-.dropdown__item--active {
+.dropdown__item--active,
+.dropdown__item--focused {
   background: var(--bg-menu-highlight);
   color: var(--fg-menu-highlight);
 }
@@ -599,7 +605,7 @@ body {
 
 .detail-panel__slideshow-nav {
   position: absolute;
-  bottom: 0;
+  top: 0;
   left: 0;
   right: 0;
   display: flex;

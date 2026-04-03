@@ -607,8 +607,9 @@ describe("FilterPanel sidebar keyboard navigation", () => {
 
     const nav = (window as any).__sidebarNav;
 
-    // Navigate to Platform header (idx 2 — after Reset and Favorites)
+    // Navigate to Platform header (idx 3 — after Reset, Favorites, Has Extras)
     nav.moveDown(); // -> Favorites
+    nav.moveDown(); // -> Has Extras
     nav.moveDown(); // -> Platform header
 
     // Platform starts expanded; activate should collapse it
@@ -639,7 +640,8 @@ describe("FilterPanel sidebar keyboard navigation", () => {
 
     const nav = (window as any).__sidebarNav;
 
-    // Navigate to first platform item: Reset(0), Favorites(1), Platform header(2), MS-DOS(3)
+    // Navigate to first platform item: Reset(0), Favorites(1), Has Extras(2), Platform header(3), MS-DOS(4)
+    nav.moveDown();
     nav.moveDown();
     nav.moveDown();
     nav.moveDown();

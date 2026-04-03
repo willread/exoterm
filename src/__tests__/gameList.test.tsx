@@ -109,7 +109,8 @@ describe("GameList rows", () => {
     dispose = render(() => <GameList />, document.body);
     await Promise.resolve();
     await Promise.resolve();
-    const rows = document.querySelectorAll(".game-list__row");
+    // Exclude the sticky header row — only count data rows.
+    const rows = document.querySelectorAll(".game-list__row:not(.game-list__row--header)");
     expect(rows).toHaveLength(3);
   });
 
@@ -120,8 +121,8 @@ describe("GameList rows", () => {
     dispose = render(() => <GameList />, document.body);
     await Promise.resolve();
     await Promise.resolve();
-    // Use compound selector to exclude the header cell (game-list__header-col also has game-list__col--title)
-    const titleCols = document.querySelectorAll(".game-list__col.game-list__col--title");
+    // Exclude header row — the header cell also carries game-list__col--title.
+    const titleCols = document.querySelectorAll(".game-list__row:not(.game-list__row--header) .game-list__col--title");
     expect(titleCols[0]?.textContent).toBe("Wolfenstein 3D");
   });
 
@@ -136,7 +137,8 @@ describe("GameList rows", () => {
     dispose = render(() => <GameList />, document.body);
     await Promise.resolve();
     await Promise.resolve();
-    const rows = document.querySelectorAll(".game-list__row");
+    // Use data rows only (skip the sticky header row).
+    const rows = document.querySelectorAll(".game-list__row:not(.game-list__row--header)");
     expect(rows[0].classList.contains("game-list__row--selected")).toBe(false);
     expect(rows[1].classList.contains("game-list__row--selected")).toBe(true);
   });
@@ -151,9 +153,9 @@ describe("GameList rows", () => {
     dispose = render(() => <GameList />, document.body);
     await Promise.resolve();
     await Promise.resolve();
-    // Use compound selector to exclude the header cell which also has game-list__col--fav
-    const favCols = document.querySelectorAll(".game-list__col.game-list__col--fav");
-    // Row 0 favorite col shows star; row 1 shows empty
+    // Exclude the header row — its fav cell contains "*" not a star.
+    const favCols = document.querySelectorAll(".game-list__row:not(.game-list__row--header) .game-list__col--fav");
+    // Row 0 (Doom) is favorited → ★; row 1 (Quake) is not → empty.
     expect(favCols[0].textContent).toBe("★");
     expect(favCols[1].textContent).toBe("");
   });
@@ -165,7 +167,7 @@ describe("GameList sort indicators", () => {
     setFilters("sortDir", "asc");
     dispose = render(() => <GameList />, document.body);
     await Promise.resolve();
-    const headerCols = document.querySelectorAll(".game-list__header-col");
+    const headerCols = document.querySelectorAll(".game-list__row--header .game-list__col");
     // Title header (index 1 after the fav col) should contain ▲
     const titleHeader = Array.from(headerCols).find((c) =>
       c.textContent?.startsWith("Title")
@@ -178,7 +180,7 @@ describe("GameList sort indicators", () => {
     setFilters("sortDir", "desc");
     dispose = render(() => <GameList />, document.body);
     await Promise.resolve();
-    const headerCols = document.querySelectorAll(".game-list__header-col");
+    const headerCols = document.querySelectorAll(".game-list__row--header .game-list__col");
     const yearHeader = Array.from(headerCols).find((c) =>
       c.textContent?.startsWith("Year")
     );
@@ -189,7 +191,7 @@ describe("GameList sort indicators", () => {
     setFilters("sortBy", "title");
     dispose = render(() => <GameList />, document.body);
     await Promise.resolve();
-    const headerCols = document.querySelectorAll(".game-list__header-col");
+    const headerCols = document.querySelectorAll(".game-list__row--header .game-list__col");
     const yearHeader = Array.from(headerCols).find((c) =>
       c.textContent?.startsWith("Year")
     );
@@ -203,7 +205,7 @@ describe("GameList sort indicators", () => {
     dispose = render(() => <GameList />, document.body);
     await Promise.resolve();
 
-    const headerCols = document.querySelectorAll(".game-list__header-col");
+    const headerCols = document.querySelectorAll(".game-list__row--header .game-list__col");
     const yearHeader = Array.from(headerCols).find((c) =>
       c.textContent?.startsWith("Year")
     ) as HTMLElement;
@@ -219,7 +221,7 @@ describe("GameList sort indicators", () => {
     dispose = render(() => <GameList />, document.body);
     await Promise.resolve();
 
-    const headerCols = document.querySelectorAll(".game-list__header-col");
+    const headerCols = document.querySelectorAll(".game-list__row--header .game-list__col");
     const titleHeader = Array.from(headerCols).find((c) =>
       c.textContent?.startsWith("Title")
     ) as HTMLElement;
@@ -235,7 +237,7 @@ describe("GameList sort indicators", () => {
     dispose = render(() => <GameList />, document.body);
     await Promise.resolve();
 
-    const headerCols = document.querySelectorAll(".game-list__header-col");
+    const headerCols = document.querySelectorAll(".game-list__row--header .game-list__col");
     const yearHeader = Array.from(headerCols).find((c) =>
       c.textContent?.startsWith("Year")
     ) as HTMLElement;
@@ -251,7 +253,7 @@ describe("GameList sort indicators", () => {
     dispose = render(() => <GameList />, document.body);
     await Promise.resolve();
 
-    const headerCols = document.querySelectorAll(".game-list__header-col");
+    const headerCols = document.querySelectorAll(".game-list__row--header .game-list__col");
     const devHeader = Array.from(headerCols).find((c) =>
       c.textContent?.startsWith("Developer")
     ) as HTMLElement;
@@ -266,7 +268,7 @@ describe("GameList sort indicators", () => {
     dispose = render(() => <GameList />, document.body);
     await Promise.resolve();
 
-    const headerCols = document.querySelectorAll(".game-list__header-col");
+    const headerCols = document.querySelectorAll(".game-list__row--header .game-list__col");
     const yearHeader = Array.from(headerCols).find((c) =>
       c.textContent?.startsWith("Year")
     ) as HTMLElement;
@@ -284,7 +286,7 @@ describe("GameList sort indicators", () => {
     await Promise.resolve();
     mockInvoke.mockClear();
 
-    const headerCols = document.querySelectorAll(".game-list__header-col");
+    const headerCols = document.querySelectorAll(".game-list__row--header .game-list__col");
     const yearHeader = Array.from(headerCols).find((c) =>
       c.textContent?.startsWith("Year")
     ) as HTMLElement;
@@ -335,9 +337,10 @@ describe("GameList virtual scrolling", () => {
     setTotalCount(100);
     dispose = render(() => <GameList />, document.body);
     await Promise.resolve();
-    const rows = document.querySelectorAll(".game-list__row");
-    // First rendered row corresponds to the first game.
-    expect(rows[0].querySelector(".game-list__col--title")?.textContent).toBe("Game 001");
+    // Skip the sticky header row; data rows use game-list__row without --header modifier.
+    const dataRows = document.querySelectorAll(".game-list__row:not(.game-list__row--header)");
+    // First rendered data row corresponds to the first game.
+    expect(dataRows[0].querySelector(".game-list__col--title")?.textContent).toBe("Game 001");
   });
 
   it("uses a total-height spacer so the scrollbar reflects all games", async () => {

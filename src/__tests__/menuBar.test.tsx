@@ -311,3 +311,107 @@ describe("MenuBar Help menu", () => {
     expect(activeMenu()).toBeNull();
   });
 });
+
+// ── Dropdown keyboard navigation ───────────────────────────────────────────────
+
+describe("MenuBar dropdown keyboard navigation", () => {
+  function openFileMenu() {
+    const fileItem = Array.from(document.querySelectorAll(".menu-bar__item")).find((i) =>
+      i.textContent?.includes("ile")
+    ) as HTMLElement;
+    fileItem.click();
+  }
+
+  function fireKey(key: string) {
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, capture: true } as any)
+    );
+  }
+
+  it("ArrowDown moves focus to the first item when nothing is focused", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    openFileMenu();
+    fireKey("ArrowDown");
+    const items = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        ".dropdown:not(.dropdown--submenu) > .dropdown__item:not(.dropdown__item--submenu)"
+      )
+    );
+    expect(items[0].classList.contains("dropdown__item--focused")).toBe(true);
+    expect(items.slice(1).every((el) => !el.classList.contains("dropdown__item--focused"))).toBe(true);
+  });
+
+  it("ArrowDown followed by ArrowDown moves focus to the second item", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    openFileMenu();
+    fireKey("ArrowDown");
+    fireKey("ArrowDown");
+    const items = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        ".dropdown:not(.dropdown--submenu) > .dropdown__item:not(.dropdown__item--submenu)"
+      )
+    );
+    expect(items[0].classList.contains("dropdown__item--focused")).toBe(false);
+    expect(items[1].classList.contains("dropdown__item--focused")).toBe(true);
+  });
+
+  it("ArrowUp does not go below index 0", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    openFileMenu();
+    fireKey("ArrowUp"); // already at -1, clamp to 0
+    const items = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        ".dropdown:not(.dropdown--submenu) > .dropdown__item:not(.dropdown__item--submenu)"
+      )
+    );
+    // Focus should be on first item (clamped)
+    expect(items[0].classList.contains("dropdown__item--focused")).toBe(true);
+  });
+
+  it("ArrowDown does not go past the last item", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    openFileMenu();
+    const items = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        ".dropdown:not(.dropdown--submenu) > .dropdown__item:not(.dropdown__item--submenu)"
+      )
+    );
+    // Press down more times than there are items
+    for (let i = 0; i < items.length + 5; i++) fireKey("ArrowDown");
+    expect(items[items.length - 1].classList.contains("dropdown__item--focused")).toBe(true);
+  });
+
+  it("Enter activates the focused item", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    openFileMenu();
+    // Navigate to 'Add Collection...' (second item)
+    fireKey("ArrowDown"); // index 0 = Manage Collections
+    fireKey("ArrowDown"); // index 1 = Add Collection
+    fireKey("Enter");
+    // Enter should have clicked 'Add Collection...' → sets activeDialog
+    expect(activeDialog()).toBe("collections");
+    expect(activeMenu()).toBeNull();
+  });
+
+  it("focused index resets to -1 when a different menu opens", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    openFileMenu();
+    fireKey("ArrowDown"); // focus index 0
+    // Now open a different menu
+    const helpItem = Array.from(document.querySelectorAll(".menu-bar__item")).find((i) =>
+      i.textContent?.includes("elp")
+    ) as HTMLElement;
+    helpItem.click();
+    // No focused item in the new menu
+    const focusedItems = document.querySelectorAll(".dropdown__item--focused");
+    expect(focusedItems.length).toBe(0);
+  });
+
+  it("keyboard events do nothing when no menu is open", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    // No menu open; ArrowDown should not throw or affect state
+    fireKey("ArrowDown");
+    expect(activeMenu()).toBeNull();
+    expect(document.querySelectorAll(".dropdown__item--focused").length).toBe(0);
+  });
+});

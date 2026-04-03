@@ -243,37 +243,38 @@ describe("CollectionPicker manage mode", () => {
     expect(delBtns).toHaveLength(2);
   });
 
-  it("clicking [del] shows a 'Delete? Yes / No' confirmation inline", () => {
+  it("clicking [del] shows a delete confirmation dialog", () => {
     dispose = render(() => <CollectionPicker />, document.body);
     const delBtn = Array.from(document.querySelectorAll("span[title]")).find(
       (s) => s.getAttribute("title") === "Delete collection"
     ) as HTMLElement;
     delBtn.click();
 
-    const body = document.querySelector(".dialog__body")?.textContent ?? "";
-    expect(body).toContain("Delete?");
-    expect(body).toContain("Yes");
-    expect(body).toContain("No");
+    // A second dialog should appear for the confirmation
+    const dialogs = document.querySelectorAll(".dialog");
+    expect(dialogs.length).toBeGreaterThan(1);
+    const bodyText = document.body.textContent ?? "";
+    expect(bodyText).toContain("eXoDOS");
+    expect(bodyText).toContain("cannot be undone");
   });
 
-  it("clicking 'No' cancels the delete confirmation", () => {
+  it("clicking '< Cancel >' cancels the delete confirmation", () => {
     dispose = render(() => <CollectionPicker />, document.body);
     const delBtn = Array.from(document.querySelectorAll("span[title]")).find(
       (s) => s.getAttribute("title") === "Delete collection"
     ) as HTMLElement;
     delBtn.click();
 
-    const noBtn = Array.from(document.querySelectorAll("span[style]")).find(
-      (s) => s.textContent?.trim() === "No"
+    const cancelBtn = Array.from(document.querySelectorAll(".dialog__button")).find(
+      (b) => b.textContent?.includes("Cancel")
     ) as HTMLElement;
-    noBtn.click();
+    cancelBtn.click();
 
-    // Confirmation should be dismissed
-    const body = document.querySelector(".dialog__body")?.textContent ?? "";
-    expect(body).not.toContain("Delete?");
+    // Confirmation dialog should be dismissed — only the manage dialog remains
+    expect(document.querySelectorAll(".dialog").length).toBe(1);
   });
 
-  it("clicking 'Yes' calls delete_collection with the correct id", async () => {
+  it("clicking '< Delete >' calls delete_collection with the correct id", async () => {
     mockInvoke.mockImplementation(async (cmd) => {
       if (cmd === "list_collections") return existingCollections;
       if (cmd === "delete_collection") return undefined;
@@ -288,10 +289,10 @@ describe("CollectionPicker manage mode", () => {
     ) as HTMLElement;
     delBtn.click();
 
-    const yesBtn = Array.from(document.querySelectorAll("span[style]")).find(
-      (s) => s.textContent?.trim() === "Yes"
+    const deleteBtn = Array.from(document.querySelectorAll(".dialog__button")).find(
+      (b) => b.textContent?.trim() === "< Delete >"
     ) as HTMLElement;
-    yesBtn.click();
+    deleteBtn.click();
     await tick();
 
     expect(mockInvoke).toHaveBeenCalledWith("delete_collection", { id: 1 });

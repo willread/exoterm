@@ -1,4 +1,4 @@
-import { Component, Show, For, onMount, onCleanup, createSignal } from "solid-js";
+import { Component, Show, For, onMount, onCleanup, createSignal, createEffect } from "solid-js";
 import { activeMenu, setActiveMenu, setActiveDialog, theme, setTheme, crtEnabled, setCrtEnabled, fontSize, setFontSize, showBoxArt, setShowBoxArt, fetchGames, fetchFilterOptions, setScanning, setScanStatus, refetchCollections, setFilters, setSelectedIndex, setSelectedGameId, setSidebarWidth, setDetailWidth } from "../lib/store";
 import { clearAllFavorites, rescanAllCollections } from "../lib/commands";
 import type { Theme } from "../lib/types";
@@ -48,6 +48,33 @@ export const MenuBar: Component = () => {
     setConfirmResetUI(false);
   };
 
+  const [focusedItemIndex, setFocusedItemIndex] = createSignal(-1);
+
+  // Return the navigable items in the currently open top-level dropdown.
+  // Excludes separators and submenu-trigger items (e.g. Theme).
+  const getDropdownItems = (): HTMLElement[] => {
+    if (!menuBarRef) return [];
+    return Array.from(
+      menuBarRef.querySelectorAll<HTMLElement>(
+        ".dropdown:not(.dropdown--submenu) > .dropdown__item:not(.dropdown__item--submenu)"
+      )
+    );
+  };
+
+  // Sync the --focused CSS class to DOM items whenever the index changes.
+  createEffect(() => {
+    const idx = focusedItemIndex();
+    getDropdownItems().forEach((el, i) =>
+      el.classList.toggle("dropdown__item--focused", i === idx)
+    );
+  });
+
+  // Reset the cursor whenever a different (or no) menu opens.
+  createEffect(() => {
+    activeMenu(); // reactive dependency
+    setFocusedItemIndex(-1);
+  });
+
   const toggleMenu = (menu: string) => {
     setActiveMenu(activeMenu() === menu ? null : menu);
     setThemeSubmenuOpen(false);
@@ -64,8 +91,41 @@ export const MenuBar: Component = () => {
     }
   };
 
-  onMount(() => document.addEventListener("click", handleDocumentClick));
-  onCleanup(() => document.removeEventListener("click", handleDocumentClick));
+  // Keyboard navigation for open dropdown menus.
+  // Up/Down move the cursor, Enter activates the focused item.
+  // Escape is already handled globally in App.tsx (closes the menu).
+  const handleMenuKeyDown = (e: KeyboardEvent) => {
+    if (!activeMenu()) return;
+    const items = getDropdownItems();
+    if (items.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      setFocusedItemIndex((i) => Math.min(i + 1, items.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      setFocusedItemIndex((i) => (i <= 0 ? 0 : i - 1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      const idx = focusedItemIndex();
+      if (idx >= 0 && idx < items.length) {
+        items[idx].click();
+      }
+    }
+  };
+
+  onMount(() => {
+    document.addEventListener("click", handleDocumentClick);
+    // Use capture so this fires before App.tsx's registered key handlers.
+    document.addEventListener("keydown", handleMenuKeyDown, true);
+  });
+  onCleanup(() => {
+    document.removeEventListener("click", handleDocumentClick);
+    document.removeEventListener("keydown", handleMenuKeyDown, true);
+  });
 
   const selectTheme = (t: Theme) => {
     setTheme(t);

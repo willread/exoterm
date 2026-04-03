@@ -196,7 +196,6 @@ export const DetailPanel: Component = () => {
             <Show when={showBoxArt() && currentImage()}>
               {(img) => (
                 <div class="detail-panel__slideshow">
-                  <BoxArt image={img()} quantize={quantize()} />
                   <Show when={images() && images()!.length > 1}>
                     <div class="detail-panel__slideshow-nav">
                       <span
@@ -212,6 +211,7 @@ export const DetailPanel: Component = () => {
                       >{"►"}</span>
                     </div>
                   </Show>
+                  <BoxArt image={img()} quantize={quantize()} />
                 </div>
               )}
             </Show>
