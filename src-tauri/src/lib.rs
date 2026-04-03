@@ -2,6 +2,7 @@ mod commands;
 mod db;
 mod models;
 mod state;
+mod watcher;
 mod xml;
 
 use models::AppConfig;
@@ -40,6 +41,11 @@ pub fn run() {
             commands::config::get_config,
             commands::config::set_config,
         ])
+        .setup(|app| {
+            // Start background filesystem watcher for installed-game detection
+            watcher::start_watcher(app.handle().clone());
+            Ok(())
+        })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {
                 let app_state = window.state::<AppState>();

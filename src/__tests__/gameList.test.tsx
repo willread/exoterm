@@ -26,6 +26,7 @@ function makeGame(overrides = {}) {
     platform: "MS-DOS",
     favorite: false,
     content_type: "Game",
+    installed: true,
     ...overrides,
   };
 }

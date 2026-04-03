@@ -2,7 +2,94 @@ use quick_xml::events::Event;
 use quick_xml::reader::Reader;
 use rusqlite::Connection;
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+/// Check whether a game is installed by looking for its zip file or extracted directory.
+///
+/// eXo collections use a "!"-prefixed stub directory that always exists.
+/// A game is "installed" when either:
+///   1. Its **zip file** exists (downloaded and ready to extract on first launch), OR
+///   2. Its **extracted directory** exists (already played/extracted).
+///
+/// eXoDOS downloads zips via torrent on demand — the zip only appears after downloading.
+/// eXoWin9x ships with all zips pre-installed — they always exist.
+///
+/// Path derivation:
+///   app_path  = "eXo\eXoDOS\!dos\DOOM\DOOM (1993).bat"
+///   zip       = {root}/eXo/eXoDOS/DOOM (1993).zip
+///   dir       = {root}/eXo/eXoDOS/DOOM
+///
+///   app_path  = "eXo\eXoWin9x\!win9x\1995\Battle Beast (1995)\Battle Beast (1995).bat"
+///   zip       = {root}/eXo/eXoWin9x/1995/Battle Beast (1995).zip
+///   dir       = {root}/eXo/eXoWin9x/1995/Battle Beast (1995)
+pub fn is_game_installed(collection_root: &Path, app_path: &str) -> bool {
+    match installed_paths_for_app_path(collection_root, app_path) {
+        Some(paths) => paths.zip_file.is_file() || paths.extracted_dir.is_dir(),
+        // No "!" stub segment — this is non-game content (books, magazines,
+        // soundtracks, videos, catalogs).  These live directly in the collection
+        // tree, so just check whether the target file/directory exists.
+        None => {
+            let target = collection_root.join(app_path.replace('\\', std::path::MAIN_SEPARATOR_STR));
+            target.exists()
+        }
+    }
+}
+
+/// Resolved filesystem paths for a game's installed artifacts.
+pub struct InstalledPaths {
+    /// The zip archive (e.g. `{root}/eXo/eXoDOS/DOOM (1993).zip`)
+    pub zip_file: PathBuf,
+    /// The extracted game directory (e.g. `{root}/eXo/eXoDOS/DOOM`)
+    pub extracted_dir: PathBuf,
+}
+
+/// Compute the zip file and extracted directory paths for a game.
+/// Returns `None` if the application_path doesn't contain a "!" stub segment.
+pub fn installed_paths_for_app_path(
+    collection_root: &Path,
+    app_path: &str,
+) -> Option<InstalledPaths> {
+    let path_buf = PathBuf::from(app_path);
+    let segments: Vec<_> = path_buf.components().collect();
+
+    // Find the "!" stub segment (e.g. "!dos", "!win9x")
+    let bang_idx = segments.iter().position(|s| {
+        s.as_os_str().to_string_lossy().starts_with('!')
+    })?;
+
+    // Need at least one segment after the bang for the game directory,
+    // plus the final .bat filename segment
+    if segments.len() < bang_idx + 3 {
+        return None;
+    }
+
+    // prefix = everything before the "!" segment
+    let prefix: PathBuf = segments[..bang_idx].iter().collect();
+
+    // after_bang_no_bat = segments between "!" and the final .bat filename
+    // This gives us the extracted game directory path (e.g. "1995/Battle Beast (1995)")
+    let after_bang: PathBuf = segments[bang_idx + 1..segments.len() - 1].iter().collect();
+    let extracted_dir = collection_root.join(&prefix).join(&after_bang);
+
+    // The zip file name matches the .bat filename but with .zip extension.
+    // It lives in the parent of the extracted directory.
+    // e.g. "DOOM (1993).bat" → "DOOM (1993).zip"
+    let bat_filename = segments.last()?.as_os_str().to_string_lossy();
+    let zip_name = bat_filename.strip_suffix(".bat")
+        .or_else(|| bat_filename.strip_suffix(".BAT"))
+        .unwrap_or(&bat_filename);
+    let zip_filename = format!("{}.zip", zip_name);
+
+    // middle = segments between "!" and the last 2 (game_dir + bat_file)
+    // For eXoDOS this is empty; for eXoWin9x this is the year
+    let middle: PathBuf = segments[bang_idx + 1..segments.len() - 2].iter().collect();
+    let zip_file = collection_root.join(&prefix).join(&middle).join(&zip_filename);
+
+    Some(InstalledPaths {
+        zip_file,
+        extracted_dir,
+    })
+}
 
 /// Determines the content type based on the platform XML filename.
 fn content_type_from_filename(filename: &str) -> &str {
@@ -338,6 +425,37 @@ pub fn scan_collection(
         }
     }
 
+    // Mark games as installed by checking if their zip file or extracted directory exists.
+    //
+    // A game is "installed" (i.e. downloaded and ready to play) when either:
+    //   - The zip archive exists (downloaded but not yet extracted), OR
+    //   - The extracted game directory exists (already played/extracted).
+    //
+    // eXoDOS downloads zips via torrent on demand — zip only appears after downloading.
+    // eXoWin9x ships with all zips pre-installed.
+    {
+        let collection_root = Path::new(collection_path);
+        let mut stmt = conn
+            .prepare("SELECT id, application_path FROM games WHERE collection_id = ?")
+            .map_err(|e| e.to_string())?;
+        let rows: Vec<(i64, String)> = stmt
+            .query_map([collection_id], |row| Ok((row.get(0)?, row.get(1)?)))
+            .map_err(|e| e.to_string())?
+            .flatten()
+            .collect();
+
+        conn.execute("BEGIN", []).map_err(|e| e.to_string())?;
+        for (id, app_path) in &rows {
+            if is_game_installed(collection_root, app_path) {
+                let _ = conn.execute(
+                    "UPDATE games SET installed = 1 WHERE id = ?",
+                    [id],
+                );
+            }
+        }
+        conn.execute("COMMIT", []).map_err(|e| e.to_string())?;
+    }
+
     // Restore user-set favorites that were saved before the rescan
     if !fav_ids.is_empty() {
         for lb_id in &fav_ids {
@@ -390,7 +508,8 @@ mod tests {
                  content_type TEXT NOT NULL DEFAULT 'Game',
                  lb_id TEXT,
                  lb_database_id TEXT,
-                 title_normalized TEXT
+                 title_normalized TEXT,
+                 installed INTEGER NOT NULL DEFAULT 0
              );
              CREATE TABLE game_extras (
                  id      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -707,5 +826,63 @@ mod tests {
         assert_eq!(extra_count, 0, "Orphaned extras (unknown GameId) should be silently dropped");
 
         std::fs::remove_file(&tmp).ok();
+    }
+
+    #[test]
+    fn test_installed_paths_exodos() {
+        // eXoDOS: eXo\eXoDOS\!dos\DOOM\DOOM (1993).bat
+        //   zip = {root}/eXo/eXoDOS/DOOM (1993).zip
+        //   dir = {root}/eXo/eXoDOS/DOOM
+        let root = Path::new("/collections/exodos");
+        let paths = installed_paths_for_app_path(
+            root,
+            r"eXo\eXoDOS\!dos\DOOM\DOOM (1993).bat",
+        )
+        .unwrap();
+        assert_eq!(
+            paths.extracted_dir,
+            PathBuf::from("/collections/exodos/eXo/eXoDOS/DOOM")
+        );
+        assert_eq!(
+            paths.zip_file,
+            PathBuf::from("/collections/exodos/eXo/eXoDOS/DOOM (1993).zip")
+        );
+    }
+
+    #[test]
+    fn test_installed_paths_win9x() {
+        // eXoWin9x: eXo\eXoWin9x\!win9x\1995\Battle Beast (1995)\Battle Beast (1995).bat
+        //   zip = {root}/eXo/eXoWin9x/1995/Battle Beast (1995).zip
+        //   dir = {root}/eXo/eXoWin9x/1995/Battle Beast (1995)
+        let root = Path::new("/collections/win9x");
+        let paths = installed_paths_for_app_path(
+            root,
+            r"eXo\eXoWin9x\!win9x\1995\Battle Beast (1995)\Battle Beast (1995).bat",
+        )
+        .unwrap();
+        assert_eq!(
+            paths.extracted_dir,
+            PathBuf::from("/collections/win9x/eXo/eXoWin9x/1995/Battle Beast (1995)")
+        );
+        assert_eq!(
+            paths.zip_file,
+            PathBuf::from("/collections/win9x/eXo/eXoWin9x/1995/Battle Beast (1995).zip")
+        );
+    }
+
+    #[test]
+    fn test_installed_paths_no_bang_segment() {
+        // No "!" segment → None
+        let root = Path::new("/root");
+        let result = installed_paths_for_app_path(root, r"some\path\game.bat");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_installed_paths_too_short_after_bang() {
+        // Bang segment exists but not enough segments after it
+        let root = Path::new("/root");
+        let result = installed_paths_for_app_path(root, r"!dos\game.bat");
+        assert!(result.is_none());
     }
 }

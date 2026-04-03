@@ -1,11 +1,13 @@
-import { Component, For, Show, createEffect, createResource, createSignal } from "solid-js";
+import { Component, For, Show, createEffect, createResource, createSignal, onCleanup } from "solid-js";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { selectedGame, gameList, selectedIndex, setFilters, setSelectedIndex, showBoxArt } from "../lib/store";
 import { getGameImages, getGameVideos, getGameExtras, launchGame } from "../lib/commands";
 import { guardedLaunch } from "../lib/keyboard";
 import type { GameExtra, GameImage } from "../lib/commands";
 import { VideoPlayer } from "./VideoPlayer";
+import { Lightbox } from "./Lightbox";
 
 /** ASCII glyph representing the kind of an extra file. */
 function extraKindGlyph(kind: string): string {
@@ -38,7 +40,7 @@ function applyVgaQuantize(img: HTMLImageElement): string {
   return canvas.toDataURL();
 }
 
-const BoxArt: Component<{ image: GameImage; quantize: boolean }> = (props) => {
+const BoxArt: Component<{ image: GameImage; quantize: boolean; onClick?: () => void }> = (props) => {
   // quantizedSrc holds the VGA-quantized data URL, or null to use the raw prop.
   // Must reset to null whenever the source image changes (new game selected)
   // so the stale quantized image isn't shown for the new game.
@@ -63,6 +65,7 @@ const BoxArt: Component<{ image: GameImage; quantize: boolean }> = (props) => {
         class="detail-panel__boxart"
         onLoad={handleLoad}
         title={props.image.category}
+        onClick={props.onClick}
       />
     </div>
   );
@@ -74,14 +77,28 @@ export const DetailPanel: Component = () => {
   const [videoIndex, setVideoIndex] = createSignal(0);
   const [imageIndex, setImageIndex] = createSignal(0);
   const [extrasOpen, setExtrasOpen] = createSignal(true);
+  const [lightboxOpen, setLightboxOpen] = createSignal(false);
+  const [lightboxIndex, setLightboxIndex] = createSignal(0);
+
+  // Bump this signal to force-refresh images/videos/extras (e.g. after install)
+  const [detailVersion, setDetailVersion] = createSignal(0);
+
+  // Listen for filesystem changes so detail panel refreshes after game install/uninstall
+  let unlistenInstalled: (() => void) | undefined;
+  listen("installed-status-changed", () => {
+    setDetailVersion((v) => v + 1);
+  }).then((fn) => {
+    unlistenInstalled = fn;
+  });
+  onCleanup(() => unlistenInstalled?.());
 
   const [images] = createResource(
-    () => game()?.id,
+    () => { detailVersion(); return game()?.id; },
     (id) => (id ? getGameImages(id) : Promise.resolve([] as GameImage[]))
   );
 
   const [videos] = createResource(
-    () => game()?.id,
+    () => { detailVersion(); return game()?.id; },
     async (id) => {
       if (!id) return [];
       const raw = await getGameVideos(id);
@@ -90,7 +107,7 @@ export const DetailPanel: Component = () => {
   );
 
   const [extras] = createResource(
-    () => game()?.id,
+    () => { detailVersion(); return game()?.id; },
     (id) => (id ? getGameExtras(id) : Promise.resolve([] as GameExtra[]))
   );
 
@@ -125,6 +142,7 @@ export const DetailPanel: Component = () => {
     setFilters("platform", "");
     setFilters("favoritesOnly", false);
     setFilters("hasExtras", false);
+    setFilters("installedOnly", false);
     setFilters(field, value);
     setFilters("offset", 0);
     setSelectedIndex(0);
@@ -140,6 +158,7 @@ export const DetailPanel: Component = () => {
     setFilters("platform", "");
     setFilters("favoritesOnly", false);
     setFilters("hasExtras", false);
+    setFilters("installedOnly", false);
     setFilters("offset", 0);
     setSelectedIndex(0);
   };
@@ -211,7 +230,14 @@ export const DetailPanel: Component = () => {
                       >{"►"}</span>
                     </div>
                   </Show>
-                  <BoxArt image={img()} quantize={quantize()} />
+                  <BoxArt
+                    image={img()}
+                    quantize={quantize()}
+                    onClick={() => {
+                      setLightboxIndex(imageIndex());
+                      setLightboxOpen(true);
+                    }}
+                  />
                 </div>
               )}
             </Show>
@@ -356,9 +382,25 @@ export const DetailPanel: Component = () => {
             {/* Play button pinned to bottom */}
             <div class="detail-panel__play-wrap">
               <button class="detail-panel__play-btn" onClick={handlePlay}>
-                {"\u25B6 PLAY"}
+                {(() => {
+                  const games = gameList();
+                  const idx = selectedIndex();
+                  const current = games[idx];
+                  return current && !current.installed ? "\u25B6 INSTALL" : "\u25B6 PLAY";
+                })()}
               </button>
             </div>
+
+            {/* Image lightbox */}
+            <Show when={lightboxOpen() && images() && images()!.length > 0}>
+              <Lightbox
+                images={images()!}
+                index={lightboxIndex()}
+                onClose={() => setLightboxOpen(false)}
+                onPrev={() => setLightboxIndex((i) => Math.max(0, i - 1))}
+                onNext={() => setLightboxIndex((i) => Math.min(images()!.length - 1, i + 1))}
+              />
+            </Show>
           </>
         )}
       </Show>

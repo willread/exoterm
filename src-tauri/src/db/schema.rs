@@ -8,6 +8,11 @@ pub fn initialize(conn: &Connection) -> rusqlite::Result<()> {
         "UPDATE games SET title_normalized = lower(title) WHERE title_normalized IS NULL OR title_normalized = '';"
     );
 
+    // Migrate: add installed column for existing databases
+    let _ = conn.execute_batch(
+        "ALTER TABLE games ADD COLUMN installed INTEGER NOT NULL DEFAULT 0;"
+    );
+
     conn.execute_batch(
         "
         CREATE TABLE IF NOT EXISTS collections (
@@ -38,10 +43,12 @@ pub fn initialize(conn: &Connection) -> rusqlite::Result<()> {
             content_type     TEXT NOT NULL DEFAULT 'Game',
             lb_id            TEXT,
             lb_database_id   TEXT,
-            title_normalized TEXT
+            title_normalized TEXT,
+            installed        INTEGER NOT NULL DEFAULT 0
         );
 
         CREATE INDEX IF NOT EXISTS idx_games_title_norm ON games(title_normalized);
+        CREATE INDEX IF NOT EXISTS idx_games_installed ON games(installed);
         CREATE INDEX IF NOT EXISTS idx_games_collection ON games(collection_id);
         CREATE INDEX IF NOT EXISTS idx_games_genre ON games(genre);
         CREATE INDEX IF NOT EXISTS idx_games_developer ON games(developer);

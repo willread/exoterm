@@ -48,7 +48,7 @@ fn test_search_returns_all_games_no_filter() {
     let conn = make_db_with_games();
     let result = queries::search_games(
         &conn, "", "Game", &[], &[], &[], &[], &[], &[],
-        false, false, "title", "asc", 0, 100,
+        false, false, false, "title", "asc", 0, 100,
     )
     .unwrap();
     assert_eq!(result.total_count, 4);
@@ -59,7 +59,7 @@ fn test_search_filters_by_content_type_magazine() {
     let conn = make_db_with_games();
     let result = queries::search_games(
         &conn, "", "Magazine", &[], &[], &[], &[], &[], &[],
-        false, false, "title", "asc", 0, 100,
+        false, false, false, "title", "asc", 0, 100,
     )
     .unwrap();
     assert_eq!(result.total_count, 1);
@@ -71,7 +71,7 @@ fn test_search_all_content_types_when_empty() {
     let conn = make_db_with_games();
     let result = queries::search_games(
         &conn, "", "", &[], &[], &[], &[], &[], &[],
-        false, false, "title", "asc", 0, 100,
+        false, false, false, "title", "asc", 0, 100,
     )
     .unwrap();
     assert_eq!(result.total_count, 5);
@@ -82,7 +82,7 @@ fn test_search_by_fts_query() {
     let conn = make_db_with_games();
     let result = queries::search_games(
         &conn, "doom", "Game", &[], &[], &[], &[], &[], &[],
-        false, false, "title", "asc", 0, 100,
+        false, false, false, "title", "asc", 0, 100,
     )
     .unwrap();
     assert_eq!(result.total_count, 1);
@@ -94,7 +94,7 @@ fn test_search_fts_prefix_match() {
     let conn = make_db_with_games();
     let result = queries::search_games(
         &conn, "qu", "", &[], &[], &[], &[], &[], &[],
-        false, false, "title", "asc", 0, 100,
+        false, false, false, "title", "asc", 0, 100,
     )
     .unwrap();
     assert_eq!(result.total_count, 1);
@@ -107,7 +107,7 @@ fn test_filter_by_developer() {
     let maxis = "Maxis".to_string();
     let result = queries::search_games(
         &conn, "", "Game", &[], &[maxis], &[], &[], &[], &[],
-        false, false, "title", "asc", 0, 100,
+        false, false, false, "title", "asc", 0, 100,
     )
     .unwrap();
     assert_eq!(result.total_count, 1);
@@ -119,7 +119,7 @@ fn test_filter_by_year() {
     let conn = make_db_with_games();
     let result = queries::search_games(
         &conn, "", "Game", &[], &[], &[], &[1993], &[], &[],
-        false, false, "title", "asc", 0, 100,
+        false, false, false, "title", "asc", 0, 100,
     )
     .unwrap();
     assert_eq!(result.total_count, 1);
@@ -131,7 +131,7 @@ fn test_filter_favorites_only() {
     let conn = make_db_with_games();
     let result = queries::search_games(
         &conn, "", "", &[], &[], &[], &[], &[], &[],
-        true, false, "title", "asc", 0, 100,
+        true, false, false, "title", "asc", 0, 100,
     )
     .unwrap();
     assert_eq!(result.total_count, 1);
@@ -144,7 +144,7 @@ fn test_sort_by_year_asc() {
     let conn = make_db_with_games();
     let result = queries::search_games(
         &conn, "", "Game", &[], &[], &[], &[], &[], &[],
-        false, false, "year", "asc", 0, 100,
+        false, false, false, "year", "asc", 0, 100,
     )
     .unwrap();
     let years: Vec<i32> = result.games.iter().filter_map(|g| g.release_year).collect();
@@ -156,7 +156,7 @@ fn test_sort_by_year_desc() {
     let conn = make_db_with_games();
     let result = queries::search_games(
         &conn, "", "Game", &[], &[], &[], &[], &[], &[],
-        false, false, "year", "desc", 0, 100,
+        false, false, false, "year", "desc", 0, 100,
     )
     .unwrap();
     let years: Vec<i32> = result.games.iter().filter_map(|g| g.release_year).collect();
@@ -168,7 +168,7 @@ fn test_sort_by_title_asc() {
     let conn = make_db_with_games();
     let result = queries::search_games(
         &conn, "", "Game", &[], &[], &[], &[], &[], &[],
-        false, false, "title", "asc", 0, 100,
+        false, false, false, "title", "asc", 0, 100,
     )
     .unwrap();
     let titles: Vec<&str> = result.games.iter().map(|g| g.title.as_str()).collect();
@@ -180,7 +180,7 @@ fn test_sort_by_title_desc() {
     let conn = make_db_with_games();
     let result = queries::search_games(
         &conn, "", "Game", &[], &[], &[], &[], &[], &[],
-        false, false, "title", "desc", 0, 100,
+        false, false, false, "title", "desc", 0, 100,
     )
     .unwrap();
     let titles: Vec<&str> = result.games.iter().map(|g| g.title.as_str()).collect();
@@ -192,7 +192,7 @@ fn test_sort_by_developer() {
     let conn = make_db_with_games();
     let result = queries::search_games(
         &conn, "", "Game", &[], &[], &[], &[], &[], &[],
-        false, false, "developer", "asc", 0, 100,
+        false, false, false, "developer", "asc", 0, 100,
     )
     .unwrap();
     // SQLite default ASC: uppercase 'M' (Maxis) sorts before lowercase 'i' (id Software)
@@ -207,12 +207,12 @@ fn test_pagination() {
     let conn = make_db_with_games();
     let page1 = queries::search_games(
         &conn, "", "Game", &[], &[], &[], &[], &[], &[],
-        false, false, "title", "asc", 0, 2,
+        false, false, false, "title", "asc", 0, 2,
     )
     .unwrap();
     let page2 = queries::search_games(
         &conn, "", "Game", &[], &[], &[], &[], &[], &[],
-        false, false, "title", "asc", 2, 2,
+        false, false, false, "title", "asc", 2, 2,
     )
     .unwrap();
     assert_eq!(page1.games.len(), 2);
@@ -390,7 +390,7 @@ fn test_search_genre_filter_matches_multi_value_cells() {
     // "Action" only appears in Game A ("Action; Adventure; Puzzle")
     let r = queries::search_games(
         &conn, "", "Game", &["Action".to_string()], &[], &[], &[], &[], &[],
-        false, false, "title", "asc", 0, 100,
+        false, false, false, "title", "asc", 0, 100,
     ).unwrap();
     assert_eq!(r.total_count, 1);
     assert_eq!(r.games[0].title, "Game A");
@@ -398,14 +398,14 @@ fn test_search_genre_filter_matches_multi_value_cells() {
     // "Adventure" appears in Game A and Game B
     let r2 = queries::search_games(
         &conn, "", "Game", &["Adventure".to_string()], &[], &[], &[], &[], &[],
-        false, false, "title", "asc", 0, 100,
+        false, false, false, "title", "asc", 0, 100,
     ).unwrap();
     assert_eq!(r2.total_count, 2);
 
     // "Strategy" appears in Game B ("Adventure; Strategy") and Game C ("Strategy")
     let r3 = queries::search_games(
         &conn, "", "Game", &["Strategy".to_string()], &[], &[], &[], &[], &[],
-        false, false, "title", "asc", 0, 100,
+        false, false, false, "title", "asc", 0, 100,
     ).unwrap();
     assert_eq!(r3.total_count, 2);
 }
@@ -417,7 +417,7 @@ fn test_search_series_filter_matches_multi_value_cells() {
     // "King's Quest" appears in Game A ("King's Quest; Space Quest") and Game B
     let r = queries::search_games(
         &conn, "", "Game", &[], &[], &[], &[], &["King's Quest".to_string()], &[],
-        false, false, "title", "asc", 0, 100,
+        false, false, false, "title", "asc", 0, 100,
     ).unwrap();
     assert_eq!(r.total_count, 2);
     let titles: Vec<&str> = r.games.iter().map(|g| g.title.as_str()).collect();
@@ -427,7 +427,7 @@ fn test_search_series_filter_matches_multi_value_cells() {
     // "Space Quest" appears in Game A ("King's Quest; Space Quest") and Game C
     let r2 = queries::search_games(
         &conn, "", "Game", &[], &[], &[], &[], &["Space Quest".to_string()], &[],
-        false, false, "title", "asc", 0, 100,
+        false, false, false, "title", "asc", 0, 100,
     ).unwrap();
     assert_eq!(r2.total_count, 2);
     let titles2: Vec<&str> = r2.games.iter().map(|g| g.title.as_str()).collect();

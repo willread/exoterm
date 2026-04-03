@@ -198,7 +198,6 @@ describe("FilterPanel genre section", () => {
 
     const headers = document.querySelectorAll(".sidebar__section-header");
     (Array.from(headers).find((h) => h.textContent?.includes("Genre")) as HTMLElement).click();
-    // Opening the section auto-selects "Action" (first genre); click a different item.
 
     const items = document.querySelectorAll(".sidebar__item");
     const rpgItem = Array.from(items).find((i) => i.textContent?.trim() === "RPG") as HTMLElement;
@@ -346,7 +345,6 @@ describe("FilterPanel genre nested subcategories", () => {
 
     const headers = document.querySelectorAll(".sidebar__section-header");
     (Array.from(headers).find((h) => h.textContent?.includes("Genre")) as HTMLElement).click();
-    // Opening auto-selects the first child "Action / Platform"; click a different child.
 
     const groupHeaders = document.querySelectorAll(".sidebar__group-header");
     (Array.from(groupHeaders).find((h) => h.textContent?.includes("Action")) as HTMLElement).click();
@@ -469,7 +467,6 @@ describe("FilterPanel developer and publisher sections", () => {
 
     const headers = document.querySelectorAll(".sidebar__section-header");
     (Array.from(headers).find((h) => h.textContent?.includes("Developer")) as HTMLElement).click();
-    // Opening auto-selects the first developer "id Software"; click a different one.
 
     const items = document.querySelectorAll(".sidebar__item");
     (Array.from(items).find((i) => i.textContent?.trim() === "Apogee") as HTMLElement).click();
@@ -490,7 +487,6 @@ describe("FilterPanel developer and publisher sections", () => {
 
     const headers = document.querySelectorAll(".sidebar__section-header");
     (Array.from(headers).find((h) => h.textContent?.includes("Publisher")) as HTMLElement).click();
-    // Opening auto-selects the first publisher "GT Interactive"; click a different one.
 
     const items = document.querySelectorAll(".sidebar__item");
     (Array.from(items).find((i) => i.textContent?.trim() === "Apogee Software") as HTMLElement).click();
@@ -663,6 +659,7 @@ describe("FilterPanel sidebar keyboard navigation", () => {
     // Navigate to Platform header (idx 3 — after Reset, Favorites, Has Extras)
     nav.moveDown(); // -> Favorites
     nav.moveDown(); // -> Has Extras
+    nav.moveDown(); // -> Installed
     nav.moveDown(); // -> Platform header
 
     // Platform starts expanded; activate should collapse it
@@ -693,7 +690,8 @@ describe("FilterPanel sidebar keyboard navigation", () => {
 
     const nav = (window as any).__sidebarNav;
 
-    // Navigate to first platform item: Reset(0), Favorites(1), Has Extras(2), Platform header(3), MS-DOS(4)
+    // Navigate to first platform item: Reset(0), Favorites(1), Has Extras(2), Installed(3), Platform header(4), MS-DOS(5)
+    nav.moveDown();
     nav.moveDown();
     nav.moveDown();
     nav.moveDown();
@@ -749,8 +747,8 @@ describe("FilterPanel sidebar keyboard navigation", () => {
 
 // ── Section auto-select and clear on collapse ────────────────────────────────
 
-describe("FilterPanel section auto-select and clear on toggle", () => {
-  it("opening a collapsed section auto-selects the first item", () => {
+describe("FilterPanel section toggle behavior", () => {
+  it("opening a collapsed section does NOT auto-select the first item", () => {
     populateFilterOptions();
     dispose = render(() => <FilterPanel />, document.body);
 
@@ -759,10 +757,10 @@ describe("FilterPanel section auto-select and clear on toggle", () => {
     ) as HTMLElement;
     genreHeader.click();
 
-    expect(filters.genre).toBe("Action");
+    expect(filters.genre).toBe("");
   });
 
-  it("does not override an existing selection when opening a section", () => {
+  it("preserves an existing selection when opening a section", () => {
     setFilters("genre", "RPG");
     populateFilterOptions();
     dispose = render(() => <FilterPanel />, document.body);
@@ -790,10 +788,11 @@ describe("FilterPanel section auto-select and clear on toggle", () => {
   });
 
   it("collapsed section header shows the selected value", () => {
+    setFilters("genre", "Action");
     populateFilterOptions();
     dispose = render(() => <FilterPanel />, document.body);
 
-    // Open genre → auto-selects "Action"
+    // Open genre
     const genreHeader = Array.from(document.querySelectorAll(".sidebar__section-header")).find(
       (h) => h.textContent?.includes("Genre")
     ) as HTMLElement;
@@ -810,7 +809,7 @@ describe("FilterPanel section auto-select and clear on toggle", () => {
     expect(collapsedHeader?.textContent).toContain("Action");
   });
 
-  it("opening a year section auto-selects the first year", () => {
+  it("opening a year section does NOT auto-select", () => {
     populateFilterOptions();
     dispose = render(() => <FilterPanel />, document.body);
 
@@ -819,6 +818,6 @@ describe("FilterPanel section auto-select and clear on toggle", () => {
     ) as HTMLElement;
     yearHeader.click();
 
-    expect(filters.year).toBe(1990);
+    expect(filters.year).toBeNull();
   });
 });

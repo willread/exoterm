@@ -35,6 +35,7 @@ export const [filters, setFilters] = createStore({
   platform: "" as string,
   favoritesOnly: false,
   hasExtras: false,
+  installedOnly: false,
   sortBy: "title" as SortField,
   sortDir: "asc" as SortDir,
   offset: 0,
@@ -113,6 +114,7 @@ export async function fetchGames() {
       platform: filters.platform ? [filters.platform] : undefined,
       favorites_only: filters.favoritesOnly || undefined,
       has_extras: filters.hasExtras || undefined,
+      installed_only: filters.installedOnly || undefined,
       sort_by: filters.sortBy,
       sort_dir: filters.sortDir,
       offset: filters.offset,
@@ -147,6 +149,7 @@ export function getPersistedState(): Record<string, any> {
     platform: filters.platform,
     favoritesOnly: filters.favoritesOnly,
     hasExtras: filters.hasExtras,
+    installedOnly: filters.installedOnly,
   };
 }
 
@@ -170,4 +173,5 @@ export function restorePersistedState(saved: Record<string, any>): void {
   if (saved.platform !== undefined) setFilters("platform", saved.platform);
   if (saved.favoritesOnly !== undefined) setFilters("favoritesOnly", saved.favoritesOnly);
   if (saved.hasExtras !== undefined) setFilters("hasExtras", saved.hasExtras);
+  if (saved.installedOnly !== undefined) setFilters("installedOnly", saved.installedOnly);
 }

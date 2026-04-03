@@ -56,7 +56,7 @@ describe("searchGames", () => {
 
   it("returns SearchResult from invoke response", async () => {
     const mockResult = {
-      games: [{ id: 1, title: "Doom", release_year: 1993, developer: "id Software", publisher: "GT Interactive", genre: "Action", platform: "MS-DOS", favorite: false, content_type: "Game" }],
+      games: [{ id: 1, title: "Doom", release_year: 1993, developer: "id Software", publisher: "GT Interactive", genre: "Action", platform: "MS-DOS", favorite: false, content_type: "Game", installed: true }],
       total_count: 1,
     };
     mockInvoke.mockResolvedValueOnce(mockResult);

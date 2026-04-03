@@ -1,4 +1,4 @@
-import { Component, onMount, createEffect } from "solid-js";
+import { Component, onMount, onCleanup, createEffect } from "solid-js";
 import { MenuBar } from "./components/MenuBar";
 import { StatusBar } from "./components/StatusBar";
 import { SearchBar } from "./components/SearchBar";
@@ -23,6 +23,7 @@ import {
   fetchGames,
   fetchFilterOptions,
   refetchCollections,
+  refetchSelectedGame,
   sidebarWidth,
   setSidebarWidth,
   detailWidth,
@@ -39,10 +40,22 @@ import {
 import { loadState, saveStateDebounced } from "./lib/persist";
 import { initKeyboardHandler, registerKey, clearBindings, guardedLaunch } from "./lib/keyboard";
 import { launchGame, toggleFavorite, rescanAllCollections } from "./lib/commands";
+import { listen } from "@tauri-apps/api/event";
 import { ResizeHandle } from "./components/ResizeHandle";
 
 const App: Component = () => {
+  let unlistenInstalled: (() => void) | undefined;
+
+  onCleanup(() => unlistenInstalled?.());
+
   onMount(async () => {
+    // Listen for filesystem watcher events — refresh game list when installed status changes
+    listen("installed-status-changed", () => {
+      fetchGames();
+      refetchSelectedGame();
+    }).then((fn) => {
+      unlistenInstalled = fn;
+    });
     // Restore persisted state before first render settles
     try {
       const saved = await loadState();
@@ -130,6 +143,8 @@ const App: Component = () => {
           setFilters("series", "");
           setFilters("platform", "");
           setFilters("favoritesOnly", false);
+          setFilters("hasExtras", false);
+          setFilters("installedOnly", false);
           setFilters("offset", 0);
           setSelectedIndex(0);
         }

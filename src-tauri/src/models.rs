@@ -35,6 +35,7 @@ pub struct GameSummary {
     pub platform: String,
     pub favorite: bool,
     pub content_type: String,
+    pub installed: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

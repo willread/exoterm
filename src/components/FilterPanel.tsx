@@ -47,7 +47,8 @@ function hasActiveFilters(): boolean {
     filters.series !== "" ||
     filters.platform !== "" ||
     filters.favoritesOnly ||
-    filters.hasExtras
+    filters.hasExtras ||
+    filters.installedOnly
   );
 }
 
@@ -61,6 +62,7 @@ function resetAllFilters() {
   setFilters("platform", "");
   setFilters("favoritesOnly", false);
   setFilters("hasExtras", false);
+  setFilters("installedOnly", false);
   setFilters("offset", 0);
   setSelectedIndex(0);
 }
@@ -88,6 +90,7 @@ type NavItem =
   | { type: "reset" }
   | { type: "favorites" }
   | { type: "has-extras" }
+  | { type: "installed" }
   | { type: "section-header"; key: SectionKey; label: string; selected: string | number | null }
   | { type: "item"; field: "genre" | "developer" | "publisher" | "series" | "platform"; value: string; label: string }
   | { type: "year-item"; value: number }
@@ -115,58 +118,10 @@ export const FilterPanel: Component = () => {
     });
   };
 
-  // When a section is opened: auto-select its first item (if nothing is already selected).
   // When collapsed the filter stays in place so the header keeps showing the selection.
+  // Opening a top-level section does NOT auto-select — user must click an item.
   const toggleSection = (key: SectionKey) => {
-    const opening = !sectionOpen[key];
-    setSectionOpen(key, opening);
-    if (opening) {
-      const o = opts();
-      switch (key) {
-        case "platform":
-          if (o.platforms.length > 0 && !filters.platform) {
-            setFilters("platform", o.platforms[0]);
-            setFilters("offset", 0); setSelectedIndex(0);
-          }
-          break;
-        case "genre": {
-          if (!filters.genre) {
-            const groups = genreGroups();
-            if (groups.length > 0) {
-              const first = groups[0];
-              const val = first.isFlat ? first.parent : first.children[0].value;
-              setFilters("genre", val);
-              setFilters("offset", 0); setSelectedIndex(0);
-            }
-          }
-          break;
-        }
-        case "year":
-          if (o.years.length > 0 && filters.year == null) {
-            setFilters("year", o.years[0]);
-            setFilters("offset", 0); setSelectedIndex(0);
-          }
-          break;
-        case "developer":
-          if (o.developers.length > 0 && !filters.developer) {
-            setFilters("developer", o.developers[0]);
-            setFilters("offset", 0); setSelectedIndex(0);
-          }
-          break;
-        case "publisher":
-          if (o.publishers.length > 0 && !filters.publisher) {
-            setFilters("publisher", o.publishers[0]);
-            setFilters("offset", 0); setSelectedIndex(0);
-          }
-          break;
-        case "series":
-          if (o.series.length > 0 && !filters.series) {
-            setFilters("series", o.series[0]);
-            setFilters("offset", 0); setSelectedIndex(0);
-          }
-          break;
-      }
-    }
+    setSectionOpen(key, !sectionOpen[key]);
   };
 
   // Fetch filter options whenever any filter changes (cascading)
@@ -206,6 +161,7 @@ export const FilterPanel: Component = () => {
     items.push({ type: "reset" });
     items.push({ type: "favorites" });
     items.push({ type: "has-extras" });
+    items.push({ type: "installed" });
 
     if (o.platforms.length > 1) {
       items.push({ type: "section-header", key: "platform", label: "Platform", selected: filters.platform || null });
@@ -313,6 +269,11 @@ export const FilterPanel: Component = () => {
         setFilters("offset", 0);
         setSelectedIndex(0);
         break;
+      case "installed":
+        setFilters("installedOnly", !filters.installedOnly);
+        setFilters("offset", 0);
+        setSelectedIndex(0);
+        break;
       case "section-header":
         toggleSection(item.key);
         break;
@@ -382,6 +343,19 @@ export const FilterPanel: Component = () => {
         }}
       >
         Has Extras
+      </div>
+
+      {/* Installed toggle */}
+      <div
+        class={`sidebar__section-header${filters.installedOnly ? " sidebar__section-header--active" : ""}${isFocused(3) ? " sidebar__item--focused" : ""}`}
+        data-sidebar-idx={3}
+        onClick={() => {
+          setFilters("installedOnly", !filters.installedOnly);
+          setFilters("offset", 0);
+          setSelectedIndex(0);
+        }}
+      >
+        Installed
       </div>
 
       {/* Platform section */}

@@ -14,6 +14,7 @@ pub fn search_games(
     platforms: &[String],
     favorites_only: bool,
     has_extras: bool,
+    installed_only: bool,
     sort_by: &str,
     sort_dir: &str,
     offset: i64,
@@ -115,6 +116,10 @@ pub fn search_games(
         );
     }
 
+    if installed_only {
+        where_clauses.push("g.installed = 1".to_string());
+    }
+
     let where_str = if where_clauses.is_empty() {
         String::new()
     } else {
@@ -157,7 +162,7 @@ pub fn search_games(
 
     // Data query
     let data_sql = format!(
-        "SELECT g.id, g.title, g.release_year, g.developer, g.publisher, g.genre, g.platform, g.favorite, g.content_type
+        "SELECT g.id, g.title, g.release_year, g.developer, g.publisher, g.genre, g.platform, g.favorite, g.content_type, g.installed
          FROM games g {} {}
          ORDER BY {} {} NULLS LAST
          LIMIT ? OFFSET ?",
@@ -187,6 +192,7 @@ pub fn search_games(
                 platform: row.get(6)?,
                 favorite: row.get::<_, i32>(7)? != 0,
                 content_type: row.get(8)?,
+                installed: row.get::<_, i32>(9)? != 0,
             })
         })?
         .collect::<rusqlite::Result<Vec<_>>>()?;

@@ -662,6 +662,7 @@ body {
   max-height: 24ch;
   object-fit: contain;
   image-rendering: pixelated;
+  cursor: pointer;
 }
 
 .detail-panel__quantize-toggle {
@@ -1080,4 +1081,63 @@ body {
   text-align: center;
   line-height: var(--char-h);
   color: var(--fg-primary);
+}
+
+/* ── Lightbox ────────────────────────────────────────────────────────────── */
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.lightbox__image {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  image-rendering: pixelated;
+  cursor: default;
+}
+
+.lightbox__arrow {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 2rem;
+  color: #ccc;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 1ch 1.5ch;
+  cursor: pointer;
+  user-select: none;
+  z-index: 601;
+}
+
+.lightbox__arrow:hover {
+  background: rgba(0, 0, 0, 0.9);
+  color: #fff;
+}
+
+.lightbox__arrow--left {
+  left: 1ch;
+}
+
+.lightbox__arrow--right {
+  right: 1ch;
+}
+
+.lightbox__counter {
+  position: fixed;
+  bottom: 2ch;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #ccc;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 0.5ch 2ch;
+  user-select: none;
+  z-index: 601;
 }

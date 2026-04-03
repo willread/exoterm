@@ -31,6 +31,7 @@ export interface GameSummary {
   platform: string;
   favorite: boolean;
   content_type: string;
+  installed: boolean;
 }
 
 export interface SearchResult {
