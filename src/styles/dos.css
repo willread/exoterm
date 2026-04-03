@@ -276,7 +276,7 @@ body {
 .sidebar__group-header {
   padding: 0 1ch;
   cursor: pointer;
-  color: var(--fg-secondary);
+  color: var(--fg-title);
   height: var(--char-h);
   line-height: var(--char-h);
   white-space: nowrap;

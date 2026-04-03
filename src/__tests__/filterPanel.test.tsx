@@ -290,6 +290,33 @@ describe("FilterPanel genre nested subcategories", () => {
     expect(items).toHaveLength(2);
   });
 
+  it("genre group headers have the same CSS classes whether collapsed or expanded", () => {
+    // Regression: the group header must not gain or lose any class when toggled.
+    // Color is controlled by .sidebar__group-header in CSS (var(--fg-title));
+    // adding a conditional class here would re-introduce the greyed-out look.
+    populateFilterOptions({ genres: ["Action / Platform", "Action / Arcade"] });
+    dispose = render(() => <FilterPanel />, document.body);
+
+    // Expand the Genre section so group headers are rendered
+    const genreHeader = Array.from(document.querySelectorAll(".sidebar__section-header")).find(
+      (h) => h.textContent?.includes("Genre")
+    ) as HTMLElement;
+    genreHeader.click();
+
+    const groupHeader = document.querySelector(".sidebar__group-header") as HTMLElement;
+    expect(groupHeader).not.toBeNull();
+
+    // Record classes in collapsed state (▲)
+    const classesCollapsed = [...groupHeader.classList].sort();
+
+    // Expand the group (▼)
+    groupHeader.click();
+    const classesExpanded = [...groupHeader.classList].sort();
+
+    // Must be identical — only the arrow glyph text changes, never CSS classes
+    expect(classesExpanded).toEqual(classesCollapsed);
+  });
+
   it("subcategory items carry both sidebar__item and sidebar__item--indent classes", () => {
     // Both classes must be present on the same element so the higher-specificity
     // .sidebar__item.sidebar__item--indent CSS rule (specificity 0,2,0) overrides
