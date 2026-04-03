@@ -244,7 +244,7 @@ body {
 }
 
 .sidebar__section-header {
-  color: var(--fg-title);
+  color: var(--fg-primary);
   padding: 2px 1ch;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
@@ -276,7 +276,7 @@ body {
 .sidebar__group-header {
   padding: 0 1ch;
   cursor: pointer;
-  color: var(--fg-title);
+  color: var(--fg-primary);
   height: var(--char-h);
   line-height: var(--char-h);
   white-space: nowrap;
@@ -286,7 +286,8 @@ body {
 }
 
 .sidebar__group-header:hover {
-  color: var(--fg-primary);
+  background: var(--bg-highlight);
+  color: var(--fg-highlight);
 }
 
 /* Two-class selector gives specificity (0,2,0) so this padding-left beats the
@@ -301,7 +302,7 @@ body {
   padding: 2px 1ch;
   cursor: pointer;
   text-align: left;
-  color: var(--fg-title);
+  color: var(--fg-primary);
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   user-select: none;

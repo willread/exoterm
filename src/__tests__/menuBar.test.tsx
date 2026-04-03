@@ -415,3 +415,98 @@ describe("MenuBar dropdown keyboard navigation", () => {
     expect(document.querySelectorAll(".dropdown__item--focused").length).toBe(0);
   });
 });
+
+// ── Left/Right arrow navigation between menus ──────────────────────────────────
+
+describe("MenuBar Left/Right arrow navigation between menus", () => {
+  function fireKey(key: string) {
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, capture: true } as any)
+    );
+  }
+
+  it("ArrowRight moves from File to Options", () => {
+    setActiveMenu("file");
+    dispose = render(() => <MenuBar />, document.body);
+    fireKey("ArrowRight");
+    expect(activeMenu()).toBe("options");
+  });
+
+  it("ArrowLeft moves from Options to File", () => {
+    setActiveMenu("options");
+    dispose = render(() => <MenuBar />, document.body);
+    fireKey("ArrowLeft");
+    expect(activeMenu()).toBe("file");
+  });
+
+  it("ArrowRight wraps from Help to File", () => {
+    setActiveMenu("help");
+    dispose = render(() => <MenuBar />, document.body);
+    fireKey("ArrowRight");
+    expect(activeMenu()).toBe("file");
+  });
+
+  it("ArrowLeft wraps from File to Help", () => {
+    setActiveMenu("file");
+    dispose = render(() => <MenuBar />, document.body);
+    fireKey("ArrowLeft");
+    expect(activeMenu()).toBe("help");
+  });
+
+  it("switching menus with arrow resets the focused item index", () => {
+    setActiveMenu("file");
+    dispose = render(() => <MenuBar />, document.body);
+    fireKey("ArrowDown"); // focus index 0
+    fireKey("ArrowRight"); // switch to options menu
+    const focusedItems = document.querySelectorAll(".dropdown__item--focused");
+    expect(focusedItems.length).toBe(0);
+  });
+});
+
+// ── Alt+key shortcuts ──────────────────────────────────────────────────────────
+
+describe("MenuBar Alt+key shortcuts", () => {
+  function fireAltKey(key: string) {
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key, altKey: true, bubbles: true, cancelable: true } as any)
+    );
+  }
+
+  it("Alt+F opens the File menu", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    fireAltKey("f");
+    expect(activeMenu()).toBe("file");
+  });
+
+  it("Alt+O opens the Options menu", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    fireAltKey("o");
+    expect(activeMenu()).toBe("options");
+  });
+
+  it("Alt+T opens the Tools menu", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    fireAltKey("t");
+    expect(activeMenu()).toBe("tools");
+  });
+
+  it("Alt+H opens the Help menu", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    fireAltKey("h");
+    expect(activeMenu()).toBe("help");
+  });
+
+  it("Alt+F closes the File menu if already open", () => {
+    setActiveMenu("file");
+    dispose = render(() => <MenuBar />, document.body);
+    fireAltKey("f");
+    expect(activeMenu()).toBeNull();
+  });
+
+  it("Alt+key works when no menu is currently open", () => {
+    dispose = render(() => <MenuBar />, document.body);
+    expect(activeMenu()).toBeNull();
+    fireAltKey("o");
+    expect(activeMenu()).toBe("options");
+  });
+});

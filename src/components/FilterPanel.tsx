@@ -115,6 +115,72 @@ export const FilterPanel: Component = () => {
     });
   };
 
+  // When a section is opened: auto-select its first item (if nothing is already selected).
+  // When a section is closed: clear the filter for that section.
+  const toggleSection = (key: SectionKey) => {
+    const opening = !sectionOpen[key];
+    setSectionOpen(key, opening);
+    if (opening) {
+      const o = opts();
+      switch (key) {
+        case "platform":
+          if (o.platforms.length > 0 && !filters.platform) {
+            setFilters("platform", o.platforms[0]);
+            setFilters("offset", 0); setSelectedIndex(0);
+          }
+          break;
+        case "genre": {
+          if (!filters.genre) {
+            const groups = genreGroups();
+            if (groups.length > 0) {
+              const first = groups[0];
+              const val = first.isFlat ? first.parent : first.children[0].value;
+              setFilters("genre", val);
+              setFilters("offset", 0); setSelectedIndex(0);
+            }
+          }
+          break;
+        }
+        case "year":
+          if (o.years.length > 0 && filters.year == null) {
+            setFilters("year", o.years[0]);
+            setFilters("offset", 0); setSelectedIndex(0);
+          }
+          break;
+        case "developer":
+          if (o.developers.length > 0 && !filters.developer) {
+            setFilters("developer", o.developers[0]);
+            setFilters("offset", 0); setSelectedIndex(0);
+          }
+          break;
+        case "publisher":
+          if (o.publishers.length > 0 && !filters.publisher) {
+            setFilters("publisher", o.publishers[0]);
+            setFilters("offset", 0); setSelectedIndex(0);
+          }
+          break;
+        case "series":
+          if (o.series.length > 0 && !filters.series) {
+            setFilters("series", o.series[0]);
+            setFilters("offset", 0); setSelectedIndex(0);
+          }
+          break;
+      }
+    } else {
+      // Clear the filter when the section is collapsed
+      switch (key) {
+        case "platform":   setFilters("platform", ""); break;
+        case "genre":      setFilters("genre", ""); break;
+        case "year":       setFilters("year", null); break;
+        case "developer":  setFilters("developer", ""); break;
+        case "publisher":  setFilters("publisher", ""); break;
+        case "series":     setFilters("series", ""); break;
+      }
+      setFilters("offset", 0);
+      setSelectedIndex(0);
+    }
+  };
+
   // Fetch filter options whenever any filter changes (cascading)
   createEffect(() => {
     const _ct = filters.contentType;
@@ -251,7 +317,7 @@ export const FilterPanel: Component = () => {
         setSelectedIndex(0);
         break;
       case "section-header":
-        setSectionOpen(item.key, (v) => !v);
+        toggleSection(item.key);
         break;
       case "item":
         applyStringFilter(item.field, item.value);
@@ -328,7 +394,7 @@ export const FilterPanel: Component = () => {
           label="Platform"
           selected={filters.platform || null}
           sectionOpen={sectionOpen}
-          setSectionOpen={setSectionOpen}
+          onToggle={toggleSection}
           navItems={navItems}
           sidebarIndex={sidebarIndex}
           activePanel={activePanel}
@@ -362,7 +428,7 @@ export const FilterPanel: Component = () => {
           label="Genre"
           selected={filters.genre || null}
           sectionOpen={sectionOpen}
-          setSectionOpen={setSectionOpen}
+          onToggle={toggleSection}
           navItems={navItems}
           sidebarIndex={sidebarIndex}
           activePanel={activePanel}
@@ -437,7 +503,7 @@ export const FilterPanel: Component = () => {
           label="Year"
           selected={filters.year}
           sectionOpen={sectionOpen}
-          setSectionOpen={setSectionOpen}
+          onToggle={toggleSection}
           navItems={navItems}
           sidebarIndex={sidebarIndex}
           activePanel={activePanel}
@@ -471,7 +537,7 @@ export const FilterPanel: Component = () => {
           label="Developer"
           selected={filters.developer || null}
           sectionOpen={sectionOpen}
-          setSectionOpen={setSectionOpen}
+          onToggle={toggleSection}
           navItems={navItems}
           sidebarIndex={sidebarIndex}
           activePanel={activePanel}
@@ -505,7 +571,7 @@ export const FilterPanel: Component = () => {
           label="Publisher"
           selected={filters.publisher || null}
           sectionOpen={sectionOpen}
-          setSectionOpen={setSectionOpen}
+          onToggle={toggleSection}
           navItems={navItems}
           sidebarIndex={sidebarIndex}
           activePanel={activePanel}
@@ -539,7 +605,7 @@ export const FilterPanel: Component = () => {
           label="Series"
           selected={filters.series || null}
           sectionOpen={sectionOpen}
-          setSectionOpen={setSectionOpen}
+          onToggle={toggleSection}
           navItems={navItems}
           sidebarIndex={sidebarIndex}
           activePanel={activePanel}
@@ -575,7 +641,7 @@ const SectionHdrFocused = (props: {
   label: string;
   selected: string | number | null;
   sectionOpen: Record<SectionKey, boolean>;
-  setSectionOpen: any;
+  onToggle: (key: SectionKey) => void;
   navItems: () => NavItem[];
   sidebarIndex: () => number;
   activePanel: () => string;
@@ -589,7 +655,7 @@ const SectionHdrFocused = (props: {
     <div
       class={`sidebar__section-header${isFocused() ? " sidebar__item--focused" : ""}`}
       data-sidebar-idx={idx()}
-      onClick={() => props.setSectionOpen(props.sectionKey, (v: boolean) => !v)}
+      onClick={() => props.onToggle(props.sectionKey)}
     >
       <span class="sidebar__section-arrow">
         {props.sectionOpen[props.sectionKey] ? "\u25BC" : "\u25B2"}

@@ -12,6 +12,10 @@ const THEMES: { label: string; value: Theme }[] = [
   { label: "Windows 3.x",    value: "win3x" },
 ];
 
+// Ordered list of top-level menus — used for Left/Right arrow navigation.
+const MENU_ORDER = ["file", "options", "tools", "help"] as const;
+type MenuKey = typeof MENU_ORDER[number];
+
 export const MenuBar: Component = () => {
   let menuBarRef: HTMLDivElement | undefined;
   const [themeSubmenuOpen, setThemeSubmenuOpen] = createSignal(false);
@@ -92,10 +96,40 @@ export const MenuBar: Component = () => {
   };
 
   // Keyboard navigation for open dropdown menus.
-  // Up/Down move the cursor, Enter activates the focused item.
-  // Escape is already handled globally in App.tsx (closes the menu).
+  // Up/Down move the cursor, Enter activates, Left/Right switch menus.
+  // Alt+letter opens the matching menu (works even when no menu is open).
+  // Escape is already handled globally in App.tsx.
   const handleMenuKeyDown = (e: KeyboardEvent) => {
+    // Alt+letter shortcuts — open/toggle the matching top-level menu.
+    if (e.altKey && !e.ctrlKey && !e.shiftKey) {
+      const altMap: Record<string, MenuKey> = {
+        f: "file", o: "options", t: "tools", h: "help",
+      };
+      const target = altMap[e.key.toLowerCase()];
+      if (target) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        toggleMenu(target);
+        return;
+      }
+    }
+
     if (!activeMenu()) return;
+
+    // Left/Right switch to the adjacent top-level menu.
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      const currentIdx = (MENU_ORDER as readonly string[]).indexOf(activeMenu()!);
+      if (currentIdx !== -1) {
+        const dir = e.key === "ArrowRight" ? 1 : -1;
+        const nextIdx = (currentIdx + dir + MENU_ORDER.length) % MENU_ORDER.length;
+        setActiveMenu(MENU_ORDER[nextIdx]);
+        setThemeSubmenuOpen(false);
+      }
+      return;
+    }
+
     const items = getDropdownItems();
     if (items.length === 0) return;
 
