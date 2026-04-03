@@ -290,6 +290,28 @@ describe("FilterPanel genre nested subcategories", () => {
     expect(items).toHaveLength(2);
   });
 
+  it("subcategory items carry both sidebar__item and sidebar__item--indent classes", () => {
+    // Both classes must be present on the same element so the higher-specificity
+    // .sidebar__item.sidebar__item--indent CSS rule (specificity 0,2,0) overrides
+    // the later .sidebar__item { padding: 0 1ch } rule (specificity 0,1,0) and the
+    // indent padding-left actually takes effect.
+    populateFilterOptions({ genres: ["Action / Platform", "Action / Arcade"] });
+    dispose = render(() => <FilterPanel />, document.body);
+
+    const headers = document.querySelectorAll(".sidebar__section-header");
+    (Array.from(headers).find((h) => h.textContent?.includes("Genre")) as HTMLElement).click();
+
+    const groupHeaders = document.querySelectorAll(".sidebar__group-header");
+    (Array.from(groupHeaders).find((h) => h.textContent?.includes("Action")) as HTMLElement).click();
+
+    const indentItems = document.querySelectorAll(".sidebar__item.sidebar__item--indent");
+    expect(indentItems.length).toBe(2);
+    indentItems.forEach((el) => {
+      expect(el.classList.contains("sidebar__item")).toBe(true);
+      expect(el.classList.contains("sidebar__item--indent")).toBe(true);
+    });
+  });
+
   it("clicking a subcategory item sets the full genre value", () => {
     populateFilterOptions({ genres: ["Action / Platform", "Action / Arcade"] });
     dispose = render(() => <FilterPanel />, document.body);

@@ -289,7 +289,11 @@ body {
   color: var(--fg-primary);
 }
 
-.sidebar__item--indent {
+/* Two-class selector gives specificity (0,2,0) so this padding-left beats the
+   later .sidebar__item { padding: 0 1ch } rule (specificity (0,1,0)).
+   3ch = 1ch group-header left-padding + 1ch arrow glyph + 1ch space,
+   so subcategory text aligns with the parent category label. */
+.sidebar__item.sidebar__item--indent {
   padding-left: 3ch;
 }
 
