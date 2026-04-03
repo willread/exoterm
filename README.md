@@ -2,7 +2,7 @@
 
 A DOS-looking frontend for browsing and launching [eXo](https://www.retro-exo.com/) game collections.
 
-<img width="2244" height="1404" alt="image" src="https://github.com/user-attachments/assets/1c44bc9b-f46d-49c1-be35-f15aa7288dd3" />
+<img width="2244" height="1404" alt="image" src="https://github.com/user-attachments/assets/d4d4ed13-eba1-4b2a-bd7e-00f8c36dd1f5" />
 
 Built with Tauri 2, SolidJS, and way too much nostalgia.
 
@@ -13,7 +13,7 @@ Point it at your eXoDOS (or eXoWin9x, etc.) folder and it scans the LaunchBox XM
 - Fast full-text search
 - Simple filtering / browsing
 - Color themes
-- Optional CRT shader
+- Optional CRT effect
 - Favorites
 - Keyboard navigation
 
