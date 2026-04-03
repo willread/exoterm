@@ -38,6 +38,9 @@ export const StatusBar: Component = () => {
             <span class="status-bar__hotkey">F</span>=Fav
           </div>
           <div class="status-bar__item">
+            <span class="status-bar__hotkey">R</span>=Random
+          </div>
+          <div class="status-bar__item">
             <span class="status-bar__hotkey">{"\u2190"}</span>=Filters
           </div>
         </Match>

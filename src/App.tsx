@@ -277,6 +277,19 @@ const App: Component = () => {
       handler: () => setActiveMenu(activeMenu() === "help" ? null : "help"),
     });
 
+    // ── R: random game ──
+    registerKey({
+      key: "r",
+      context: "global",
+      handler: () => {
+        const count = gameList().length;
+        if (count > 0) {
+          setSelectedIndex(Math.floor(Math.random() * count));
+          setActivePanel("list");
+        }
+      },
+    });
+
     // ── Zoom: + / - ──
     const applyZoom = (size: number) => {
       setFontSize(size);
