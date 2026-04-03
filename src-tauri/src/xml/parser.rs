@@ -871,6 +871,25 @@ mod tests {
     }
 
     #[test]
+    fn test_installed_paths_ddagency() {
+        // Real-world case: game dir name differs from bat filename
+        let root = Path::new("/col");
+        let paths = installed_paths_for_app_path(
+            root,
+            r"eXo\eXoDOS\!dos\DDAgency\Dinosaur Detective Agency (1994).bat",
+        )
+        .unwrap();
+        assert_eq!(
+            paths.extracted_dir,
+            PathBuf::from("/col/eXo/eXoDOS/DDAgency")
+        );
+        assert_eq!(
+            paths.zip_file,
+            PathBuf::from("/col/eXo/eXoDOS/Dinosaur Detective Agency (1994).zip")
+        );
+    }
+
+    #[test]
     fn test_installed_paths_no_bang_segment() {
         // No "!" segment → None
         let root = Path::new("/root");
