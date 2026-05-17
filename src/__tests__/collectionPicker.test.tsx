@@ -70,11 +70,11 @@ describe("CollectionPicker first-run mode", () => {
     expect(document.querySelector(".dialog")).not.toBeNull();
   });
 
-  it("shows 'Welcome to eXo Terminal' title on first run", async () => {
+  it("shows 'Welcome to exoterm' title on first run", async () => {
     await tick();
     dispose = render(() => <CollectionPicker />, document.body);
     expect(document.querySelector(".dialog__title")?.textContent).toBe(
-      "Welcome to eXo Terminal"
+      "Welcome to exoterm"
     );
   });
 

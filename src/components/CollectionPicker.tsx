@@ -131,7 +131,7 @@ export const CollectionPicker: Component = () => {
     isManageMode() || isAddMode() || (isFirstRun() && activeDialog() !== "about");
 
   const title = () => {
-    if (isFirstRun()) return "Welcome to eXo Terminal";
+    if (isFirstRun()) return "Welcome to exoterm";
     if (isManageMode()) return "Manage Collections";
     return "Add Collection";
   };
