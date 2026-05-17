@@ -1,12 +1,12 @@
 [package]
-name = "exodos-frontend"
+name = "exoterm"
 version = "0.1.0"
 description = "eXo Terminal - DOS-style frontend for eXo collections"
 authors = ["will"]
 edition = "2021"
 
 [lib]
-name = "exodos_frontend_lib"
+name = "exoterm_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    exodos_frontend_lib::run()
+    exoterm_lib::run()
 }
