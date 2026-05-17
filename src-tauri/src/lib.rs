@@ -9,6 +9,7 @@ mod xml;
 use models::AppConfig;
 use rusqlite::Connection;
 use state::AppState;
+use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::Manager;
 
@@ -59,11 +60,12 @@ pub fn run() {
 }
 
 fn initialize_state() -> Result<AppState, String> {
-    // Use app data directory for the database
-    let db_dir = dirs_next().map_err(|e| format!("Failed to get app data dir: {}", e))?;
-    std::fs::create_dir_all(&db_dir).map_err(|e| e.to_string())?;
+    let db_path = resolve_db_path(std::env::args().collect())?;
+    if let Some(parent) = db_path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    eprintln!("[exoterm] db: {}", db_path.display());
 
-    let db_path = db_dir.join("exo_terminal.db");
     let conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
 
     // Enable WAL mode for better concurrent access
@@ -81,15 +83,102 @@ fn initialize_state() -> Result<AppState, String> {
     })
 }
 
-pub(crate) fn dirs_next() -> Result<std::path::PathBuf, String> {
+pub(crate) fn dirs_next() -> Result<PathBuf, String> {
     // Store in %APPDATA%/exo-terminal/
     if let Some(app_data) = std::env::var_os("APPDATA") {
-        let dir = std::path::PathBuf::from(app_data).join("exo-terminal");
+        let dir = PathBuf::from(app_data).join("exo-terminal");
         return Ok(dir);
     }
     // Fallback
     let home = std::env::var("USERPROFILE")
         .or_else(|_| std::env::var("HOME"))
         .map_err(|_| "Could not determine home directory".to_string())?;
-    Ok(std::path::PathBuf::from(home).join(".exo-terminal"))
+    Ok(PathBuf::from(home).join(".exo-terminal"))
+}
+
+/// Pick the SQLite file path: `--db <path>` / `--db=<path>` wins, otherwise default
+/// to `<app-data-dir>/exo_terminal.db`.
+pub(crate) fn resolve_db_path(args: Vec<String>) -> Result<PathBuf, String> {
+    if let Some(custom) = parse_db_arg(&args) {
+        return Ok(custom);
+    }
+    let dir = dirs_next().map_err(|e| format!("Failed to get app data dir: {}", e))?;
+    Ok(dir.join("exo_terminal.db"))
+}
+
+/// Extract the `--db` argument value, if any. Supports `--db <path>` and `--db=<path>`.
+/// Returns `None` if the flag is absent or the value is missing.
+fn parse_db_arg(args: &[String]) -> Option<PathBuf> {
+    let mut iter = args.iter().skip(1);
+    while let Some(a) = iter.next() {
+        if a == "--db" {
+            return iter.next().filter(|v| !v.is_empty()).map(PathBuf::from);
+        }
+        if let Some(v) = a.strip_prefix("--db=") {
+            if !v.is_empty() {
+                return Some(PathBuf::from(v));
+            }
+        }
+    }
+    None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn argv(items: &[&str]) -> Vec<String> {
+        items.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn parses_db_flag_space_form() {
+        let args = argv(&["exoterm.exe", "--db", "D:\\portable\\exo.db"]);
+        assert_eq!(
+            parse_db_arg(&args),
+            Some(PathBuf::from("D:\\portable\\exo.db"))
+        );
+    }
+
+    #[test]
+    fn parses_db_flag_equals_form() {
+        let args = argv(&["exoterm.exe", "--db=D:\\portable\\exo.db"]);
+        assert_eq!(
+            parse_db_arg(&args),
+            Some(PathBuf::from("D:\\portable\\exo.db"))
+        );
+    }
+
+    #[test]
+    fn returns_none_when_flag_absent() {
+        assert_eq!(parse_db_arg(&argv(&["exoterm.exe"])), None);
+        assert_eq!(parse_db_arg(&argv(&["exoterm.exe", "--other"])), None);
+    }
+
+    #[test]
+    fn ignores_dangling_flag_with_no_value() {
+        assert_eq!(parse_db_arg(&argv(&["exoterm.exe", "--db"])), None);
+    }
+
+    #[test]
+    fn ignores_empty_value() {
+        assert_eq!(parse_db_arg(&argv(&["exoterm.exe", "--db", ""])), None);
+        assert_eq!(parse_db_arg(&argv(&["exoterm.exe", "--db="])), None);
+    }
+
+    #[test]
+    fn resolve_falls_back_to_default_without_flag() {
+        // Without the flag we should land in the default app-data dir.
+        // We can't assert the absolute path (varies by host), but we can assert
+        // the filename is the one we expect.
+        let resolved = resolve_db_path(argv(&["exoterm.exe"])).unwrap();
+        assert_eq!(resolved.file_name().unwrap(), "exo_terminal.db");
+    }
+
+    #[test]
+    fn resolve_honors_db_flag() {
+        let resolved =
+            resolve_db_path(argv(&["exoterm.exe", "--db", "X:\\custom.db"])).unwrap();
+        assert_eq!(resolved, PathBuf::from("X:\\custom.db"));
+    }
 }
