@@ -4,6 +4,7 @@ import type {
   CollectionInfo,
   FilterOptions,
   Game,
+  PortableSuggestion,
   SearchResult,
 } from "./types";
 
@@ -91,9 +92,10 @@ export async function clearAllFavorites(): Promise<number> {
 
 export async function scanCollection(
   name: string,
-  path: string
+  path: string,
+  portable: boolean = false
 ): Promise<number> {
-  return invoke("scan_collection", { name, path });
+  return invoke("scan_collection", { name, path, portable });
 }
 
 export async function listCollections(): Promise<CollectionInfo[]> {
@@ -104,6 +106,12 @@ export async function validateCollectionPath(
   path: string
 ): Promise<boolean> {
   return invoke("validate_collection_path", { path });
+}
+
+export async function suggestPathMode(
+  path: string
+): Promise<PortableSuggestion> {
+  return invoke("suggest_path_mode", { path });
 }
 
 export async function deleteCollection(id: number): Promise<void> {

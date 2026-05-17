@@ -18,12 +18,21 @@ let dispose: (() => void) | undefined;
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
 async function withCollections(
-  cols: Array<{ id: number; name: string; path: string; game_count: number }>
+  cols: Array<{
+    id: number;
+    name: string;
+    path: string;
+    path_mode?: string;
+    game_count: number;
+  }>
 ) {
+  const normalized = cols.map((c) => ({ path_mode: "absolute", ...c }));
   mockInvoke.mockImplementation(async (cmd) => {
-    if (cmd === "list_collections") return cols;
+    if (cmd === "list_collections") return normalized;
     if (cmd === "search_games") return { games: [], total_count: 0 };
     if (cmd === "get_filter_options") return { genres: [], developers: [], publishers: [], years: [], series: [], platforms: [] };
+    if (cmd === "suggest_path_mode")
+      return { portable_available: false, portable_stored_path: "" };
     return null;
   });
   refetchCollections();
@@ -36,6 +45,8 @@ beforeEach(() => {
     if (cmd === "list_collections") return [];
     if (cmd === "search_games") return { games: [], total_count: 0 };
     if (cmd === "get_filter_options") return { genres: [], developers: [], publishers: [], years: [], series: [], platforms: [] };
+    if (cmd === "suggest_path_mode")
+      return { portable_available: false, portable_stored_path: "" };
     return null;
   });
   mockOpen.mockReset();
@@ -309,5 +320,166 @@ describe("CollectionPicker manage mode", () => {
     dispose = render(() => <CollectionPicker />, document.body);
     const inputs = document.querySelectorAll(".dialog__input");
     expect(inputs).toHaveLength(0);
+  });
+});
+
+// ── Portable mode flow ─────────────────────────────────────────────────────────
+
+describe("CollectionPicker portable mode", () => {
+  const findPortableCheckbox = () =>
+    document.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
+
+  beforeEach(async () => {
+    setActiveDialog("collections");
+    await withCollections([
+      { id: 1, name: "eXoDOS", path: "E:\\Exo\\eXoDOS", game_count: 12000 },
+    ]);
+    await tick();
+  });
+
+  it("renders a portable checkbox, disabled by default with no path picked", async () => {
+    dispose = render(() => <CollectionPicker />, document.body);
+    await tick();
+    const cb = findPortableCheckbox();
+    expect(cb).not.toBeNull();
+    expect(cb!.disabled).toBe(true);
+    expect(cb!.checked).toBe(false);
+  });
+
+  it("enables and auto-checks the portable checkbox when the picked path is on the exe drive", async () => {
+    mockInvoke.mockImplementation(async (cmd, _args) => {
+      if (cmd === "list_collections")
+        return [{ id: 1, name: "eXoDOS", path: "E:\\Exo\\eXoDOS", path_mode: "absolute", game_count: 12000 }];
+      if (cmd === "suggest_path_mode")
+        return { portable_available: true, portable_stored_path: "\\Exo\\eXoDOS" };
+      if (cmd === "search_games") return { games: [], total_count: 0 };
+      if (cmd === "get_filter_options") return { genres: [], developers: [], publishers: [], years: [], series: [], platforms: [] };
+      return null;
+    });
+    mockOpen.mockResolvedValueOnce("E:\\Exo\\eXoDOS");
+
+    dispose = render(() => <CollectionPicker />, document.body);
+    await tick();
+
+    const browseBtn = Array.from(document.querySelectorAll(".dialog__button")).find((b) =>
+      b.textContent?.includes("Browse")
+    ) as HTMLElement;
+    browseBtn.click();
+    await tick();
+    await tick();
+
+    const cb = findPortableCheckbox()!;
+    expect(cb.disabled).toBe(false);
+    expect(cb.checked).toBe(true);
+    expect(document.body.textContent).toContain("Will store as:");
+    expect(document.body.textContent).toContain("\\Exo\\eXoDOS");
+  });
+
+  it("leaves the portable checkbox disabled when the path is on a different drive", async () => {
+    mockInvoke.mockImplementation(async (cmd) => {
+      if (cmd === "list_collections")
+        return [{ id: 1, name: "eXoDOS", path: "E:\\Exo\\eXoDOS", path_mode: "absolute", game_count: 12000 }];
+      if (cmd === "suggest_path_mode")
+        return { portable_available: false, portable_stored_path: "" };
+      if (cmd === "search_games") return { games: [], total_count: 0 };
+      if (cmd === "get_filter_options") return { genres: [], developers: [], publishers: [], years: [], series: [], platforms: [] };
+      return null;
+    });
+    mockOpen.mockResolvedValueOnce("C:\\Games\\eXoWin9x");
+
+    dispose = render(() => <CollectionPicker />, document.body);
+    await tick();
+
+    const browseBtn = Array.from(document.querySelectorAll(".dialog__button")).find((b) =>
+      b.textContent?.includes("Browse")
+    ) as HTMLElement;
+    browseBtn.click();
+    await tick();
+    await tick();
+
+    const cb = findPortableCheckbox()!;
+    expect(cb.disabled).toBe(true);
+    expect(cb.checked).toBe(false);
+  });
+
+  it("passes portable=true to scan_collection when the box is checked", async () => {
+    const calls: Array<{ cmd: string; args: any }> = [];
+    mockInvoke.mockImplementation(async (cmd, args) => {
+      calls.push({ cmd, args });
+      if (cmd === "list_collections")
+        return [{ id: 1, name: "eXoDOS", path: "E:\\Exo\\eXoDOS", path_mode: "absolute", game_count: 12000 }];
+      if (cmd === "suggest_path_mode")
+        return { portable_available: true, portable_stored_path: "\\eXoDOS" };
+      if (cmd === "validate_collection_path") return true;
+      if (cmd === "scan_collection") return 42;
+      if (cmd === "search_games") return { games: [], total_count: 0 };
+      if (cmd === "get_filter_options") return { genres: [], developers: [], publishers: [], years: [], series: [], platforms: [] };
+      return null;
+    });
+    mockOpen.mockResolvedValueOnce("E:\\eXoDOS");
+
+    dispose = render(() => <CollectionPicker />, document.body);
+    await tick();
+
+    (Array.from(document.querySelectorAll(".dialog__button")).find((b) =>
+      b.textContent?.includes("Browse")
+    ) as HTMLElement).click();
+    await tick();
+    await tick();
+
+    (Array.from(document.querySelectorAll(".dialog__button")).find((b) =>
+      b.textContent?.includes("Add & Scan")
+    ) as HTMLElement).click();
+    await tick();
+    await tick();
+
+    const scanCall = calls.find((c) => c.cmd === "scan_collection");
+    expect(scanCall).toBeDefined();
+    expect(scanCall!.args).toMatchObject({
+      name: "eXoDOS",
+      path: "E:\\eXoDOS",
+      portable: true,
+    });
+  });
+
+  it("passes portable=false when the checkbox is unchecked even if portable is available", async () => {
+    const calls: Array<{ cmd: string; args: any }> = [];
+    mockInvoke.mockImplementation(async (cmd, args) => {
+      calls.push({ cmd, args });
+      if (cmd === "list_collections")
+        return [{ id: 1, name: "eXoDOS", path: "E:\\Exo\\eXoDOS", path_mode: "absolute", game_count: 12000 }];
+      if (cmd === "suggest_path_mode")
+        return { portable_available: true, portable_stored_path: "\\eXoDOS" };
+      if (cmd === "validate_collection_path") return true;
+      if (cmd === "scan_collection") return 42;
+      if (cmd === "search_games") return { games: [], total_count: 0 };
+      if (cmd === "get_filter_options") return { genres: [], developers: [], publishers: [], years: [], series: [], platforms: [] };
+      return null;
+    });
+    mockOpen.mockResolvedValueOnce("E:\\eXoDOS");
+
+    dispose = render(() => <CollectionPicker />, document.body);
+    await tick();
+
+    (Array.from(document.querySelectorAll(".dialog__button")).find((b) =>
+      b.textContent?.includes("Browse")
+    ) as HTMLElement).click();
+    await tick();
+    await tick();
+
+    // Uncheck the portable box
+    const cb = findPortableCheckbox()!;
+    cb.checked = false;
+    cb.dispatchEvent(new Event("change", { bubbles: true }));
+    await tick();
+
+    (Array.from(document.querySelectorAll(".dialog__button")).find((b) =>
+      b.textContent?.includes("Add & Scan")
+    ) as HTMLElement).click();
+    await tick();
+    await tick();
+
+    const scanCall = calls.find((c) => c.cmd === "scan_collection");
+    expect(scanCall!.args.portable).toBe(false);
   });
 });

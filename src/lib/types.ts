@@ -49,11 +49,22 @@ export interface FilterOptions {
   platforms: string[];
 }
 
+export type PathMode = "absolute" | "portable_drive";
+
 export interface CollectionInfo {
   id: number;
   name: string;
+  /** Raw stored path. For `path_mode === "portable_drive"` this lacks a drive letter. */
   path: string;
+  path_mode: PathMode;
   game_count: number;
+}
+
+export interface PortableSuggestion {
+  /** True iff the path is on the same drive as the running exoterm. */
+  portable_available: boolean;
+  /** What would land in `collections.path` (e.g. `\eXoDOS`) when portable is on. */
+  portable_stored_path: string;
 }
 
 export interface AppConfig {

@@ -94,12 +94,23 @@ describe("getGameImages", () => {
 });
 
 describe("scanCollection", () => {
-  it("calls invoke with scan_collection, name, and path", async () => {
+  it("calls invoke with scan_collection, name, path, and portable=false by default", async () => {
     mockInvoke.mockResolvedValueOnce(12000);
     await scanCollection("eXoDOS", "E:\\Exo\\eXoDOS");
     expect(mockInvoke).toHaveBeenCalledWith("scan_collection", {
       name: "eXoDOS",
       path: "E:\\Exo\\eXoDOS",
+      portable: false,
+    });
+  });
+
+  it("forwards an explicit portable flag", async () => {
+    mockInvoke.mockResolvedValueOnce(12000);
+    await scanCollection("eXoDOS", "E:\\eXoDOS", true);
+    expect(mockInvoke).toHaveBeenCalledWith("scan_collection", {
+      name: "eXoDOS",
+      path: "E:\\eXoDOS",
+      portable: true,
     });
   });
 

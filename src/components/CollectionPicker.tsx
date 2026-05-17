@@ -11,7 +11,12 @@ import {
   fetchGames,
   refetchFilterOptions,
 } from "../lib/store";
-import { scanCollection, validateCollectionPath, deleteCollection } from "../lib/commands";
+import {
+  scanCollection,
+  validateCollectionPath,
+  deleteCollection,
+  suggestPathMode,
+} from "../lib/commands";
 
 export const CollectionPicker: Component = () => {
   const [selectedPath, setSelectedPath] = createSignal("");
@@ -19,6 +24,29 @@ export const CollectionPicker: Component = () => {
   const [error, setError] = createSignal("");
   const [isScanning, setIsScanning] = createSignal(false);
   const [confirmDeleteId, setConfirmDeleteId] = createSignal<number | null>(null);
+  const [portable, setPortable] = createSignal(false);
+  const [portableAvailable, setPortableAvailable] = createSignal(false);
+  const [portableStoredPath, setPortableStoredPath] = createSignal("");
+
+  const refreshPortableHint = async (path: string) => {
+    if (!path) {
+      setPortableAvailable(false);
+      setPortableStoredPath("");
+      setPortable(false);
+      return;
+    }
+    try {
+      const s = await suggestPathMode(path);
+      setPortableAvailable(s.portable_available);
+      setPortableStoredPath(s.portable_stored_path);
+      // Default the checkbox to checked when portable is viable.
+      setPortable(s.portable_available);
+    } catch {
+      setPortableAvailable(false);
+      setPortableStoredPath("");
+      setPortable(false);
+    }
+  };
 
   const handleBrowse = async () => {
     const result = await open({
@@ -26,10 +54,12 @@ export const CollectionPicker: Component = () => {
       title: "Select eXo Collection Directory",
     });
     if (result) {
-      setSelectedPath(result as string);
-      const parts = (result as string).replace(/\\/g, "/").split("/");
+      const p = result as string;
+      setSelectedPath(p);
+      const parts = p.replace(/\\/g, "/").split("/");
       setCollectionName(parts[parts.length - 1] || "");
       setError("");
+      await refreshPortableHint(p);
     }
   };
 
@@ -54,7 +84,8 @@ export const CollectionPicker: Component = () => {
     setError("");
 
     try {
-      const count = await scanCollection(name, path);
+      const usePortable = portable() && portableAvailable();
+      const count = await scanCollection(name, path, usePortable);
       setScanStatus(`Done! ${count.toLocaleString()} items imported.`);
       refetchCollections();
       refetchFilterOptions();
@@ -63,6 +94,9 @@ export const CollectionPicker: Component = () => {
       // Reset form
       setSelectedPath("");
       setCollectionName("");
+      setPortable(false);
+      setPortableAvailable(false);
+      setPortableStoredPath("");
 
       // Auto-close after short delay
       setTimeout(() => {
@@ -214,7 +248,10 @@ export const CollectionPicker: Component = () => {
             <input
               class="dialog__input"
               value={selectedPath()}
-              onInput={(e) => setSelectedPath(e.currentTarget.value)}
+              onInput={async (e) => {
+                setSelectedPath(e.currentTarget.value);
+                await refreshPortableHint(e.currentTarget.value);
+              }}
               placeholder="C:\path\to\eXoDOS"
               style="flex: 1;"
             />
@@ -222,6 +259,30 @@ export const CollectionPicker: Component = () => {
               Browse...
             </button>
           </div>
+        </div>
+
+        <div style="margin-bottom: 4px;">
+          <label
+            style={`display: flex; align-items: center; gap: 1ch; cursor: ${portableAvailable() ? "pointer" : "default"}; opacity: ${portableAvailable() ? 1 : 0.5};`}
+            title={
+              portableAvailable()
+                ? "Stores the path without a drive letter so a remount under a different letter still works."
+                : "Available only when the collection is on the same drive as eXo Terminal."
+            }
+          >
+            <input
+              type="checkbox"
+              checked={portable() && portableAvailable()}
+              disabled={!portableAvailable()}
+              onChange={(e) => setPortable(e.currentTarget.checked)}
+            />
+            <span>Portable (collection is on the same drive as eXo Terminal)</span>
+          </label>
+          <Show when={portable() && portableAvailable() && portableStoredPath()}>
+            <div style="opacity: 0.7; margin-top: 2px;">
+              Will store as: {portableStoredPath()}
+            </div>
+          </Show>
         </div>
       </Show>
 
