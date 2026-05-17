@@ -148,10 +148,10 @@ export const CollectionPicker: Component = () => {
 
       {/* Collection list with delete */}
       <Show when={(collections()?.length ?? 0) > 0}>
-        <div style="margin-bottom: 1ch;">
+        <div style="display: flex; flex-direction: column; gap: 1ch; margin-bottom: 2ch;">
           <For each={collections()}>
             {(c) => (
-              <div style="display: flex; align-items: center; padding: 1px 0;">
+              <div style="display: flex; align-items: center;">
                 <div style="flex: 1;">
                   {c.name} ({c.game_count.toLocaleString()} items)
                 </div>
