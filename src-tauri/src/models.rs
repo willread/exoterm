@@ -59,7 +59,10 @@ pub struct FilterOptions {
 pub struct CollectionInfo {
     pub id: i64,
     pub name: String,
+    /// Raw stored path. For `path_mode == "portable_drive"` this has no drive letter
+    /// (e.g. `\eXoDOS`); the exe's current drive is prepended at resolve time.
     pub path: String,
+    pub path_mode: String,
     pub game_count: i64,
 }
 

@@ -3,6 +3,7 @@ use std::process::{Command, Stdio};
 use std::thread;
 use tauri::{AppHandle, Emitter, State};
 
+use crate::paths;
 use crate::state::AppState;
 
 #[tauri::command]
@@ -13,32 +14,38 @@ pub fn launch_game(
 ) -> Result<String, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
 
-    let (app_path, root_folder, collection_path): (String, Option<String>, String) = db
+    let (app_path, root_folder, collection_path, path_mode): (
+        String,
+        Option<String>,
+        String,
+        String,
+    ) = db
         .query_row(
-            "SELECT g.application_path, g.root_folder, c.path
+            "SELECT g.application_path, g.root_folder, c.path, c.path_mode
              FROM games g
              JOIN collections c ON g.collection_id = c.id
              WHERE g.id = ?",
             [id],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
         )
         .map_err(|e| e.to_string())?;
 
     drop(db);
 
-    let full_path = PathBuf::from(&collection_path).join(&app_path);
+    let collection_base = paths::resolve_collection_path(&collection_path, &path_mode)?;
+    let full_path = collection_base.join(&app_path);
 
     if !full_path.exists() {
         return Err(format!("Game executable not found: {}", full_path.display()));
     }
 
     let work_dir = if let Some(ref rf) = root_folder {
-        PathBuf::from(&collection_path).join(rf)
+        collection_base.join(rf)
     } else {
         full_path
             .parent()
             .map(|p| p.to_path_buf())
-            .unwrap_or_else(|| PathBuf::from(&collection_path))
+            .unwrap_or_else(|| PathBuf::from(&collection_base))
     };
 
     // Kill any existing game before launching

@@ -5,6 +5,7 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::paths;
 use crate::state::AppState;
 use crate::xml::parser::is_game_installed;
 
@@ -34,21 +35,25 @@ fn get_collection_watch_dirs(app_handle: &AppHandle) -> Vec<PathBuf> {
         Ok(db) => db,
         Err(_) => return vec![],
     };
-    let mut stmt = match db.prepare("SELECT path FROM collections") {
+    let mut stmt = match db.prepare("SELECT path, path_mode FROM collections") {
         Ok(s) => s,
         Err(_) => return vec![],
     };
-    let collection_paths: Vec<String> = stmt
-        .query_map([], |row| row.get::<_, String>(0))
+    let collection_paths: Vec<(String, String)> = stmt
+        .query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)))
         .ok()
         .map(|rows| rows.flatten().collect())
         .unwrap_or_default();
 
     let mut watch_dirs = Vec::new();
 
-    for cpath in &collection_paths {
+    for (cpath, pmode) in &collection_paths {
         // Walk into {collection}/eXo/ and find each sub-collection (eXoDOS, eXoWin9x, etc.)
-        let exo_dir = PathBuf::from(cpath).join("eXo");
+        let resolved = match paths::resolve_collection_path(cpath, pmode) {
+            Ok(p) => p,
+            Err(_) => continue,
+        };
+        let exo_dir = resolved.join("eXo");
         let sub_collections = match std::fs::read_dir(&exo_dir) {
             Ok(rd) => rd.flatten().filter(|e| e.path().is_dir()).collect::<Vec<_>>(),
             Err(_) => continue,
@@ -124,12 +129,12 @@ fn refresh_installed(app_handle: &AppHandle) -> bool {
         Err(_) => return false,
     };
 
-    let cols: Vec<(i64, String)> = {
-        let mut stmt = match db.prepare("SELECT id, path FROM collections") {
+    let cols: Vec<(i64, String, String)> = {
+        let mut stmt = match db.prepare("SELECT id, path, path_mode FROM collections") {
             Ok(s) => s,
             Err(_) => return false,
         };
-        stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+        stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
             .ok()
             .map(|r| r.flatten().collect())
             .unwrap_or_default()
@@ -137,8 +142,12 @@ fn refresh_installed(app_handle: &AppHandle) -> bool {
 
     let mut changed = false;
 
-    for (cid, cpath) in &cols {
-        let root = Path::new(cpath);
+    for (cid, cpath, pmode) in &cols {
+        let resolved = match paths::resolve_collection_path(cpath, pmode) {
+            Ok(p) => p,
+            Err(_) => continue,
+        };
+        let root: &Path = &resolved;
         let rows: Vec<(i64, String, bool)> = {
             let mut stmt = match db.prepare(
                 "SELECT id, application_path, installed FROM games WHERE collection_id = ?",

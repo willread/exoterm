@@ -13,13 +13,22 @@ pub fn initialize(conn: &Connection) -> rusqlite::Result<()> {
         "ALTER TABLE games ADD COLUMN installed INTEGER NOT NULL DEFAULT 0;"
     );
 
+    // Migrate: add path_mode column to collections for portable-drive support.
+    // 'absolute' = stored path is used verbatim (legacy/default).
+    // 'portable_drive' = stored path has no drive letter; the current exe's drive is
+    // prepended at resolve time so a USB-style install survives drive-letter changes.
+    let _ = conn.execute_batch(
+        "ALTER TABLE collections ADD COLUMN path_mode TEXT NOT NULL DEFAULT 'absolute';"
+    );
+
     conn.execute_batch(
         "
         CREATE TABLE IF NOT EXISTS collections (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             name        TEXT NOT NULL,
             path        TEXT NOT NULL UNIQUE,
-            last_scanned INTEGER
+            last_scanned INTEGER,
+            path_mode   TEXT NOT NULL DEFAULT 'absolute'
         );
 
         CREATE TABLE IF NOT EXISTS games (
@@ -161,6 +170,48 @@ mod tests {
             .query_row("SELECT title FROM games WHERE id = 1", [], |r| r.get(0))
             .unwrap();
         assert_eq!(title, "Doom");
+    }
+
+    #[test]
+    fn test_path_mode_defaults_to_absolute() {
+        let conn = Connection::open_in_memory().unwrap();
+        initialize(&conn).unwrap();
+        conn.execute(
+            "INSERT INTO collections (name, path) VALUES ('t', '/t')",
+            [],
+        )
+        .unwrap();
+        let mode: String = conn
+            .query_row("SELECT path_mode FROM collections", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(mode, "absolute");
+    }
+
+    #[test]
+    fn test_path_mode_migration_on_legacy_db() {
+        // Simulate an older database that predates the path_mode column.
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE collections (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                name         TEXT NOT NULL,
+                path         TEXT NOT NULL UNIQUE,
+                last_scanned INTEGER
+            );
+            INSERT INTO collections (name, path) VALUES ('legacy', 'E:\\eXoDOS');",
+        )
+        .unwrap();
+
+        // Running initialize should add path_mode and existing rows should default to 'absolute'.
+        initialize(&conn).unwrap();
+        let mode: String = conn
+            .query_row(
+                "SELECT path_mode FROM collections WHERE name = 'legacy'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(mode, "absolute");
     }
 
     #[test]

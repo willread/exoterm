@@ -1,6 +1,7 @@
 mod commands;
 mod db;
 mod models;
+mod paths;
 mod state;
 mod watcher;
 mod xml;
@@ -32,6 +33,7 @@ pub fn run() {
             commands::collections::scan_collection,
             commands::collections::list_collections,
             commands::collections::validate_collection_path,
+            commands::collections::suggest_path_mode,
             commands::collections::delete_collection,
             commands::collections::rescan_all_collections,
             commands::launch::launch_game,

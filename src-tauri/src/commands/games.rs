@@ -118,27 +118,28 @@ pub fn get_game_images(state: State<AppState>, id: i64) -> Result<Vec<GameImage>
     let db = state.db.lock().map_err(|e| e.to_string())?;
 
     // Images live at Images/{platform}/{category}/{title_sanitized}-NN.ext
-    let (title, platform, collection_path): (String, String, String) = db
+    let (title, platform, collection_path, path_mode): (String, String, String, String) = db
         .query_row(
-            "SELECT g.title, g.platform, c.path
+            "SELECT g.title, g.platform, c.path, c.path_mode
              FROM games g
              JOIN collections c ON g.collection_id = c.id
              WHERE g.id = ?",
             [id],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
         )
         .map_err(|e| e.to_string())?;
     drop(db);
 
+    let collection_root = crate::paths::resolve_collection_path(&collection_path, &path_mode)?;
     let sanitized = sanitize_title_for_filename(&title);
     // Images base: {collection}/Images/{platform}/
     // Try exact path first; fall back to case-insensitive directory match.
     let images_base = {
-        let exact = PathBuf::from(&collection_path).join("Images").join(&platform);
+        let exact = collection_root.join("Images").join(&platform);
         if exact.is_dir() {
             exact
         } else {
-            let images_dir = PathBuf::from(&collection_path).join("Images");
+            let images_dir = collection_root.join("Images");
             let platform_lower = platform.to_lowercase();
             std::fs::read_dir(&images_dir)
                 .ok()
@@ -148,7 +149,7 @@ pub fn get_game_images(state: State<AppState>, id: i64) -> Result<Vec<GameImage>
                     })
                 })
                 .map(|e| e.path())
-                .unwrap_or_else(|| PathBuf::from(&collection_path).join("Images").join(&platform))
+                .unwrap_or_else(|| collection_root.join("Images").join(&platform))
         }
     };
 
@@ -245,13 +246,13 @@ pub fn get_game_images(state: State<AppState>, id: i64) -> Result<Vec<GameImage>
 pub fn get_game_extras(state: State<AppState>, id: i64) -> Result<Vec<GameExtra>, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
 
-    let collection_path: String = db
+    let (collection_path, path_mode): (String, String) = db
         .query_row(
-            "SELECT c.path FROM games g
+            "SELECT c.path, c.path_mode FROM games g
              JOIN collections c ON g.collection_id = c.id
              WHERE g.id = ?",
             [id],
-            |r| r.get(0),
+            |r| Ok((r.get(0)?, r.get(1)?)),
         )
         .map_err(|e| e.to_string())?;
 
@@ -264,7 +265,7 @@ pub fn get_game_extras(state: State<AppState>, id: i64) -> Result<Vec<GameExtra>
         )
         .map_err(|e| e.to_string())?;
 
-    let collection_root = PathBuf::from(&collection_path);
+    let collection_root = crate::paths::resolve_collection_path(&collection_path, &path_mode)?;
 
     let extras: Vec<GameExtra> = stmt
         .query_map([id], |row| {
@@ -387,14 +388,19 @@ fn extract_bat_video_paths(
 pub fn get_game_videos(state: State<AppState>, id: i64) -> Result<Vec<GameVideo>, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
 
-    let (app_path, root_folder, collection_path): (String, Option<String>, String) = db
+    let (app_path, root_folder, collection_path, path_mode): (
+        String,
+        Option<String>,
+        String,
+        String,
+    ) = db
         .query_row(
-            "SELECT g.application_path, g.root_folder, c.path
+            "SELECT g.application_path, g.root_folder, c.path, c.path_mode
              FROM games g
              JOIN collections c ON g.collection_id = c.id
              WHERE g.id = ?",
             [id],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
         )
         .map_err(|e| e.to_string())?;
     drop(db);
@@ -411,7 +417,7 @@ pub fn get_game_videos(state: State<AppState>, id: i64) -> Result<Vec<GameVideo>
         return Ok(vec![]);
     };
 
-    let collection_root = PathBuf::from(&collection_path);
+    let collection_root = crate::paths::resolve_collection_path(&collection_path, &path_mode)?;
     let bat_path = collection_root.join(&app_path);
     let work_dir = if let Some(ref rf) = root_folder {
         collection_root.join(rf)
