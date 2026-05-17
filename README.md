@@ -16,6 +16,8 @@ Point it at your eXoDOS (or eXoWin9x, etc.) folder and it scans the LaunchBox XM
 - Optional CRT effect
 - Favorites
 - Keyboard navigation
+- Installed game detection
+- Random game picker
 
 ## Build
 
@@ -26,18 +28,3 @@ npm install
 npm run dev     # dev mode with hot reload
 npm run package # standalone .exe + installer
 ```
-
-## Keys
-
-| Key | What it does |
-|-----|-------------|
-| `Enter` | Launch selected game |
-| `Up/Down` | Navigate list |
-| `Left/Right` | Navigate between sections |
-| `PgUp/PgDn` | Page through list |
-| `Home/End` | Jump to first/last |
-| `/` | Focus search bar |
-| `Enter` (in search) | Execute search |
-| `Esc` | Clear search + filters |
-| `F` | Toggle favorite |
-| `Alt+F/O/T/H` | Open menus |
